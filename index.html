@@ -289,10 +289,12 @@ const SOURCE_META = {
 
 async function callClaude(prompt) {
   const key = document.getElementById('claudeKey').value.trim();
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  if (!key) throw new Error('Claude API key girilmedi');
+  const r = await fetch('/api/claude', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
+      userKey: key,
       model:'claude-sonnet-4-20250514',
       max_tokens:4000,
       messages:[{role:'user',content:prompt}]
