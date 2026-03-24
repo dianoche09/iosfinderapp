@@ -164,11 +164,17 @@ select option{background:#0d1820;}
 
 <div class="panel">
   <div class="plabel">API & Ayarlar</div>
-  <div class="g2">
+  <div class="g2" style="margin-bottom:12px">
     <div class="field">
       <label>CLAUDE API KEY</label>
       <input type="password" id="claudeKey" placeholder="sk-ant-api03-...">
     </div>
+    <div class="field">
+      <label>SERP API KEY <span style="color:var(--muted);font-size:9px">(opsiyonel)</span></label>
+      <input type="password" id="serpKey" placeholder="Boş = Claude bilgisi, dolu = gerçek web verisi">
+    </div>
+  </div>
+  <div class="g2">
     <div class="field">
       <label>HEDEF PAZAR</label>
       <select id="market">
@@ -177,6 +183,11 @@ select option{background:#0d1820;}
         <option value="Europe">🇪🇺 Europe</option>
         <option value="Asia">🌏 Asia Pacific</option>
       </select>
+    </div>
+    <div class="field" style="display:flex;align-items:flex-end">
+      <div id="modeBox" style="width:100%;padding:9px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);font-family:'Space Mono',monospace;font-size:11px;color:var(--muted2)">
+        🧠 Mod: Claude bilgisi
+      </div>
     </div>
   </div>
 </div>
@@ -278,6 +289,38 @@ function lg(msg, type='') {
 }
 function sp(p) { document.getElementById('pf').style.width = p + '%'; }
 
+// Update mode indicator when serpKey changes
+document.addEventListener('DOMContentLoaded', () => {
+  const sk = document.getElementById('serpKey');
+  if (sk) sk.addEventListener('input', updateMode);
+});
+function updateMode() {
+  const hasSerpKey = document.getElementById('serpKey')?.value.trim();
+  const box = document.getElementById('modeBox');
+  if (!box) return;
+  if (hasSerpKey) {
+    box.style.color = 'var(--orange)';
+    box.style.borderColor = 'rgba(255,107,43,.4)';
+    box.textContent = '🔍 Mod: SerpAPI + Claude (gerçek veri)';
+  } else {
+    box.style.color = 'var(--muted2)';
+    box.style.borderColor = 'var(--border2)';
+    box.textContent = '🧠 Mod: Claude bilgisi';
+  }
+}
+
+// SerpAPI search via proxy
+async function serpSearch(serpKey, query) {
+  const r = await fetch('/api/serp', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ serpKey, query, num: 8 })
+  });
+  if (!r.ok) throw new Error('SerpAPI proxy hatası: ' + r.status);
+  const d = await r.json();
+  return (d.organic_results || []).map(x => '• ' + x.title + ': ' + (x.snippet||'')).join('\n');
+}
+
 // Source config
 const SOURCE_META = {
   twitter:      { label: 'Twitter/X',      cls: 'src-twitter',      ico: '𝕏',  bg: 'rgba(0,212,255,.1)'  },
@@ -296,7 +339,7 @@ async function callClaude(prompt) {
     body: JSON.stringify({
       userKey: key,
       model:'claude-sonnet-4-20250514',
-      max_tokens:4000,
+      max_tokens:5000,
       messages:[{role:'user',content:prompt}]
     })
   });
@@ -434,7 +477,7 @@ async function scan() {
     scanning = false;
     document.getElementById('btnScan').disabled = false;
     document.getElementById('bico').textContent = '⚡';
-    document.getElementById('btxt').textContent = 'FIRSAT TARA';
+    document.getElementById('btxt').textContent = document.getElementById('serpKey')?.value.trim() ? 'GERÇEK VERİYLE TARA' : 'FIRSAT TARA';
   }
 }
 
@@ -459,8 +502,8 @@ function render(anim=true) {
   document.getElementById('es').classList.remove('show');
   const mkt = document.getElementById('market').value;
   const mrr = document.getElementById('mrr').value;
-  document.getElementById('rc').textContent =
-    `${ideas.length} fırsat · ${mkt} · ${mrr} hedef · Twitter + Reddit + App Store + Indie Hackers`;
+  const mode = document.getElementById('serpKey')?.value.trim() ? '🔍 SerpAPI + Claude (gerçek veri)' : '🧠 Claude bilgisi';
+  document.getElementById('rc').textContent = `${ideas.length} fırsat · ${mkt} · ${mrr} hedef · ${mode}`;
 
   document.getElementById('ig').innerHTML = ideas.map((d,i) => {
     const psrc = SOURCE_META[d.primarySource] || SOURCE_META.twitter;
