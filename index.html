@@ -5,676 +5,1025 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>iOS Opportunity Radar</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
-:root {
+:root{
   --bg:#030508;--surface:#080e14;--surface2:#0d1820;
   --border:#0f2233;--border2:#163247;
   --neon:#00ff88;--neon2:#00d4ff;--orange:#ff6b2b;--red:#ff2d55;
   --text:#c8dde8;--muted:#3a6077;--muted2:#5a8099;
+  --sidebar:264px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
-.wrap{max-width:1080px;margin:0 auto;padding:0 24px 80px;position:relative;z-index:1;}
 
-/* HEADER */
-header{padding:32px 0 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--border2);margin-bottom:28px;}
-.brand-top{display:flex;align-items:center;gap:12px;}
-.pulse-ring{width:34px;height:34px;border:1.5px solid var(--neon);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
-.pulse-ring::before{content:'';position:absolute;border-radius:50%;border:1px solid var(--neon);animation:ripple 2.5s ease-out infinite;}
-@keyframes ripple{0%{width:34px;height:34px;opacity:.5}100%{width:70px;height:70px;opacity:0}}
-.pulse-core{width:8px;height:8px;background:var(--neon);border-radius:50%;box-shadow:0 0 8px var(--neon);z-index:1;}
-h1{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:2px;color:#fff;line-height:1;}
-h1 span{color:var(--neon);}
-.brand-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;padding-left:46px;margin-top:4px;}
-.badge{font-family:'Space Mono',monospace;font-size:10px;color:var(--neon);border:1px solid rgba(0,255,136,.3);padding:4px 10px;border-radius:4px;display:flex;align-items:center;gap:6px;background:rgba(0,255,136,.05);}
-.badge::before{content:'';width:6px;height:6px;background:var(--neon);border-radius:50%;animation:blink 1s step-end infinite;}
-@keyframes blink{50%{opacity:0}}
+/* AUTH */
+#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;}
+.auth-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:40px 44px;text-align:center;max-width:400px;width:90%;}
+.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:2px;color:#fff;margin-bottom:4px;}
+.auth-logo span{color:var(--neon);}
+.auth-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.15em;margin-bottom:24px;}
+.auth-desc{font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:24px;}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px 20px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-google:hover{border-color:var(--neon);background:rgba(0,255,136,.05);transform:translateY(-1px);}
+.btn-google svg{width:20px;height:20px;flex-shrink:0;}
+.auth-skip{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;margin-top:14px;text-decoration:underline;}
+.auth-skip:hover{color:var(--muted2);}
 
-/* PANEL */
-.panel{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;margin-bottom:14px;}
-.plabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:13px;display:flex;align-items:center;gap:8px;}
-.plabel::after{content:'';flex:1;height:1px;background:var(--border2);}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-@media(max-width:600px){.g2{grid-template-columns:1fr;}}
-.field label{display:block;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);letter-spacing:.1em;margin-bottom:5px;}
-input[type=text],input[type=password],select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;transition:border-color .2s;}
+/* APP */
+#app{display:none;min-height:100vh;}
+#app.show{display:flex;flex-direction:column;}
+
+/* TOPNAV */
+.topnav{position:fixed;top:0;left:0;right:0;height:54px;background:rgba(3,5,8,.96);border-bottom:1px solid var(--border2);backdrop-filter:blur(12px);display:flex;align-items:center;padding:0 18px;gap:14px;z-index:50;}
+.nav-brand{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#fff;white-space:nowrap;}
+.nav-brand span{color:var(--neon);}
+.nav-tabs{display:flex;gap:3px;}
+.nav-tab{padding:5px 12px;border-radius:6px;border:none;background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.on{background:var(--surface);color:var(--neon);border:1px solid var(--border2);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.user-pill{display:flex;align-items:center;gap:7px;padding:4px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border2);}
+.user-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;}
+.user-name{font-family:'Space Mono',monospace;font-size:10px;color:var(--text);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-signout{padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;}
+.btn-signout:hover{border-color:var(--red);color:var(--red);}
+.guest-pill{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);border:1px solid var(--border2);padding:4px 9px;border-radius:6px;}
+
+/* LAYOUT */
+.body-wrap{display:flex;padding-top:54px;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);flex-shrink:0;border-right:1px solid var(--border2);background:var(--surface);position:fixed;top:54px;left:0;bottom:0;overflow-y:auto;z-index:40;padding:16px 12px 24px;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.sb-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin:16px 0 8px 2px;}
+.sb-label:first-child{margin-top:4px;}
+.field{margin-bottom:9px;}
+.field label{display:block;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted2);letter-spacing:.1em;margin-bottom:4px;padding:0 2px;}
+input[type=text],input[type=password],select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;transition:border-color .2s;}
 input:focus,select:focus{border-color:var(--neon);}
 select option{background:#0d1820;}
-
-/* CHIPS */
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
-.chip{padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
+#modeBox{width:100%;padding:7px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);transition:all .3s;}
+.chips{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{padding:3px 9px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;transition:all .15s;}
 .chip:hover{border-color:var(--neon2);color:var(--neon2);}
 .chip.on{border-color:var(--neon);color:var(--neon);background:rgba(0,255,136,.08);}
-
-/* ACTIONS */
-.action-row{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
-.btn{padding:12px 22px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
-.btn-primary{background:var(--neon);color:#000;flex:1;}
-.btn-primary:hover{background:#2fffaa;box-shadow:0 6px 20px rgba(0,255,136,.3);transform:translateY(-1px);}
-.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
-.btn-sec{background:transparent;border:1px solid var(--border2);color:var(--muted2);}
-.btn-sec:hover{border-color:var(--neon2);color:var(--neon2);}
-.btn-excel{background:transparent;border:1px solid rgba(0,255,136,.4);color:var(--neon);font-size:13px;}
-.btn-excel:hover{background:rgba(0,255,136,.1);}
-
-/* PROGRESS */
-.prog-wrap{display:none;margin-bottom:22px;}
+.btn-scan{width:100%;padding:11px;border-radius:9px;border:none;background:var(--neon);color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;}
+.btn-scan:hover{background:#2fffaa;box-shadow:0 4px 14px rgba(0,255,136,.3);}
+.btn-scan:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+.btn-clear{width:100%;padding:7px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;margin-top:5px;}
+.btn-clear:hover{border-color:var(--red);color:var(--red);}
+.prog-wrap{display:none;margin-top:12px;}
 .prog-wrap.show{display:block;}
-.prog-track{height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:13px;}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--neon),var(--neon2));border-radius:3px;width:0%;transition:width .4s ease;box-shadow:0 0 10px var(--neon);}
-.log-box{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;font-family:'Space Mono',monospace;font-size:11px;max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
-.ll{display:flex;gap:8px;line-height:1.5;}
-.ll .t{color:var(--muted);flex-shrink:0;}
+.prog-track{height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--neon),var(--orange));border-radius:3px;width:0%;transition:width .4s ease;box-shadow:0 0 8px var(--neon);}
+.log-box{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-family:'Space Mono',monospace;font-size:9px;max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.ll{display:flex;gap:6px;line-height:1.5;}
+.ll .t{color:var(--muted);flex-shrink:0;font-size:8px;}
 .ll .m{color:var(--text);}
 .ll.ok .m{color:var(--neon);}
 .ll.err .m{color:var(--red);}
 .ll.info .m{color:var(--neon2);}
+.ll.warn .m{color:var(--orange);}
 
-/* RESULTS HEADER */
-.res-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
-.res-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#fff;}
-.res-count{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted2);margin-top:3px;}
-.sort-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;}
-.sbtn{padding:5px 11px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
+/* MAIN */
+.main{margin-left:var(--sidebar);flex:1;padding:24px 26px 60px;min-width:0;}
+.page{display:none;}.page.show{display:block;}
+
+/* RESULTS */
+.res-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.res-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#fff;}
+.res-meta{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);margin-top:3px;}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.sbtn{padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
 .sbtn.on{border-color:var(--orange);color:var(--orange);background:rgba(255,107,43,.1);}
-.ideas-grid{display:flex;flex-direction:column;gap:13px;}
+.btn-excel{padding:5px 10px;border-radius:6px;border:1px solid rgba(0,255,136,.3);background:transparent;color:var(--neon);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;display:none;}
+.btn-excel:hover{background:rgba(0,255,136,.08);}
+.ideas-grid{display:flex;flex-direction:column;gap:14px;}
 
 /* CARD */
-.card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;transition:all .22s;position:relative;overflow:hidden;animation:cin .35s ease both;}
+.card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:20px;transition:transform .22s,box-shadow .22s,border-color .22s;position:relative;overflow:hidden;animation:cin .35s ease both;}
 @keyframes cin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--neon),var(--neon2));opacity:0;transition:opacity .22s;}
-.card:hover{border-color:rgba(0,255,136,.25);transform:translateY(-2px);box-shadow:0 6px 28px rgba(0,0,0,.35);}
+.card:hover{border-color:rgba(0,255,136,.2);transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,.3);}
 .card:hover::before{opacity:1;}
 .card:hover .rank{color:var(--neon);}
-
-.ctop{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;}
-.rank{font-family:'Bebas Neue',sans-serif;font-size:40px;line-height:1;color:var(--border2);flex-shrink:0;width:48px;text-align:center;transition:color .2s;}
-.cmain{flex:1;}
-.ccat{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--neon2);text-transform:uppercase;margin-bottom:4px;}
-.ctitle{font-size:18px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:6px;}
+.fav-btn{position:absolute;top:14px;right:14px;background:transparent;border:none;cursor:pointer;font-size:18px;opacity:.35;transition:all .2s;z-index:2;line-height:1;}
+.fav-btn:hover{opacity:1;transform:scale(1.2);}
+.fav-btn.on{opacity:1;}
+.ctop{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+.rank{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:1;color:var(--border2);flex-shrink:0;width:44px;text-align:center;transition:color .2s;}
+.cmain{flex:1;min-width:0;}
+.ccat{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--neon2);text-transform:uppercase;margin-bottom:3px;}
+.ctitle-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;}
+.ctitle{font-size:17px;font-weight:600;color:#fff;line-height:1.2;}
 .cdesc{font-size:13px;color:var(--muted2);line-height:1.6;}
+.csrc-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px;align-items:center;}
 .cright{text-align:right;flex-shrink:0;}
-.cmrr{font-family:'Bebas Neue',sans-serif;font-size:25px;letter-spacing:1px;color:var(--neon);}
-.cmrr-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
-.cmvp{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px;}
+.cmrr{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--neon);}
+.cmrr-lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+.cmvp{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px;}
 
-/* SOURCE BADGE */
-.source-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;font-family:'Space Mono',monospace;font-size:9px;margin-top:6px;border:1px solid;}
-.src-twitter{background:rgba(0,212,255,.08);color:var(--neon2);border-color:rgba(0,212,255,.2);}
-.src-reddit{background:rgba(255,107,43,.08);color:var(--orange);border-color:rgba(255,107,43,.2);}
-.src-appstore{background:rgba(0,255,136,.08);color:var(--neon);border-color:rgba(0,255,136,.2);}
-.src-indiehackers{background:rgba(180,120,255,.08);color:#b47fff;border-color:rgba(180,120,255,.2);}
-.src-producthunt{background:rgba(255,80,40,.08);color:#ff5028;border-color:rgba(255,80,40,.2);}
+/* BADGES */
+.badge-v{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;font-size:8px;background:rgba(255,200,0,.1);color:#ffc800;border:1px solid rgba(255,200,0,.3);}
+.badge-c{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;font-size:8px;background:rgba(0,255,136,.07);color:var(--neon);border:1px solid rgba(0,255,136,.2);}
+.badge-s{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;font-size:8px;background:rgba(255,107,43,.07);color:var(--orange);border:1px solid rgba(255,107,43,.2);}
+.src-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-family:'Space Mono',monospace;font-size:8px;border:1px solid;}
+.st-tw{background:rgba(0,212,255,.07);color:var(--neon2);border-color:rgba(0,212,255,.2);}
+.st-rd{background:rgba(255,107,43,.07);color:var(--orange);border-color:rgba(255,107,43,.2);}
+.st-as{background:rgba(0,255,136,.07);color:var(--neon);border-color:rgba(0,255,136,.2);}
+.st-ih{background:rgba(180,120,255,.07);color:#b47fff;border-color:rgba(180,120,255,.2);}
 
 /* SCORES */
 .scores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
-@media(max-width:520px){.scores{grid-template-columns:repeat(2,1fr);}}
-.si{display:flex;flex-direction:column;gap:5px;}
-.slbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;}
+@media(max-width:600px){.scores{grid-template-columns:repeat(2,1fr);}}
+.si{display:flex;flex-direction:column;gap:4px;}
+.slbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
 .sbg{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;}
 .sb{height:100%;border-radius:2px;}
 .sv{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;}
-.s-comp .sb{background:var(--red);} .s-comp .sv{color:var(--red);}
-.s-mrr .sb{background:var(--neon);} .s-mrr .sv{color:var(--neon);}
-.s-eff .sb{background:var(--orange);} .s-eff .sv{color:var(--orange);}
-.s-opp .sb{background:var(--neon2);} .s-opp .sv{color:var(--neon2);}
+.s-comp .sb{background:var(--red);}.s-comp .sv{color:var(--red);}
+.s-mrr .sb{background:var(--neon);}.s-mrr .sv{color:var(--neon);}
+.s-eff .sb{background:var(--orange);}.s-eff .sv{color:var(--orange);}
+.s-opp .sb{background:var(--neon2);}.s-opp .sv{color:var(--neon2);}
 
 /* INSIGHTS */
-.insights{display:none;flex-direction:column;gap:9px;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
+.insights{display:none;flex-direction:column;gap:0;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
 .card.open .insights{display:flex;}
-.irow{display:flex;gap:9px;align-items:flex-start;}
-.iico{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:2px;}
+.irow{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);}
+.irow:last-child{border-bottom:none;}
+.iico{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px;}
 .itxt{font-size:12px;color:var(--text);line-height:1.55;}
 .itxt strong{color:#fff;font-weight:600;}
-.src-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-left:4px;text-transform:uppercase;}
+.real-snip{background:var(--surface2);border:1px solid var(--border2);border-left:2px solid var(--orange);border-radius:5px;padding:7px 10px;margin-top:6px;font-size:11px;color:var(--muted2);font-family:'Space Mono',monospace;line-height:1.6;}
 
-.cfoot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:7px;}
-.tags{display:flex;gap:5px;flex-wrap:wrap;}
+/* COMPETITOR TABLE */
+.comp-wrap{display:none;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
+.card.open .comp-wrap{display:block;}
+.comp-hdr{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.15em;color:var(--orange);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.comp-hdr::before{content:'';width:5px;height:5px;background:var(--orange);border-radius:50%;}
+table.ct{width:100%;border-collapse:collapse;}
+table.ct th{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:left;padding:5px 8px;border-bottom:1px solid var(--border2);}
+table.ct td{font-size:12px;padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
+table.ct tr:last-child td{border-bottom:none;}
+table.ct tr:hover td{background:rgba(255,255,255,.015);}
+.cn{font-weight:600;color:#fff;}
+.cr{color:var(--orange);}
+.cw{color:var(--muted2);font-size:11px;}
+
+.cfoot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:6px;}
 .tbtn{padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
 .tbtn:hover{border-color:var(--neon2);color:var(--neon2);}
 
-/* EMPTY */
-.empty{text-align:center;padding:72px 24px;display:none;}
-.empty.show{display:block;}
-.empty-ico{font-size:44px;margin-bottom:14px;opacity:.45;}
-.empty-t{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--muted2);}
-.empty-s{font-size:13px;color:var(--muted);margin-top:6px;}
+/* DASHBOARD */
+.dash-hdr{margin-bottom:24px;}
+.dash-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:#fff;}
+.dash-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);margin-top:4px;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+@media(max-width:600px){.stats-row{grid-template-columns:1fr;}}
+.stat-card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px;text-align:center;}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:1px;color:var(--neon);}
+.stat-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;margin-top:3px;}
+.fav-grid{display:flex;flex-direction:column;gap:12px;}
+.empty-dash{text-align:center;padding:60px 20px;}
+.empty-dash .ei{font-size:36px;margin-bottom:12px;opacity:.4;}
+.empty-dash .et{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--muted2);}
+.empty-dash .es{font-size:12px;color:var(--muted);margin-top:6px;}
 
+/* FIREBASE CONFIG MODAL */
+#fbModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;}
+#fbModal.show{display:flex;}
+.fb-box{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:28px;max-width:480px;width:90%;}
+.fb-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#fff;margin-bottom:6px;}
+.fb-sub{font-size:12px;color:var(--muted2);line-height:1.6;margin-bottom:18px;}
+.fb-steps{font-size:12px;color:var(--muted2);line-height:2;margin-bottom:18px;}
+.fb-steps a{color:var(--neon2);}
+.fb-input{margin-bottom:10px;}
+.fb-input label{display:block;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted2);margin-bottom:4px;}
+.fb-row{display:flex;gap:10px;margin-top:4px;}
+.btn-fb-save{flex:1;padding:10px;border-radius:8px;border:none;background:var(--neon);color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-fb-skip{padding:10px 16px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;}
+
+
+/* LANG TOGGLE */
+.lang-toggle{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);}
+.lang-switch{position:relative;width:44px;height:22px;cursor:pointer;}
+.lang-switch input{opacity:0;width:0;height:0;}
+.lang-slider{position:absolute;inset:0;background:var(--surface2);border:1px solid var(--border2);border-radius:22px;transition:.3s;}
+.lang-slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--muted2);border-radius:50%;transition:.3s;}
+.lang-switch input:checked + .lang-slider{background:rgba(0,212,255,.15);border-color:var(--neon2);}
+.lang-switch input:checked + .lang-slider::before{transform:translateX(22px);background:var(--neon2);}
+.lang-label{font-weight:700;}
+.lang-label.on{color:var(--neon2);}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:var(--surface2);}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-<header>
-  <div class="brand">
-    <div class="brand-top">
-      <div class="pulse-ring"><div class="pulse-core"></div></div>
-      <h1>iOS OPPORTUNITY <span>RADAR</span></h1>
+<!-- FIREBASE CONFIG MODAL -->
+<div id="fbModal">
+  <div class="fb-box">
+    <div class="fb-title">🔥 Firebase Kurulumu</div>
+    <div class="fb-sub">Google ile giriş için Firebase projesi gerekli. Ücretsiz, 5 dakika sürer.</div>
+    <div class="fb-steps">
+      1. <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Proje oluştur<br>
+      2. Authentication → Google sağlayıcısını aç<br>
+      3. Proje Ayarları → Web uygulaması ekle → Config kopyala<br>
+      4. Aşağıya yapıştır
     </div>
-    <div class="brand-sub">// Twitter · Reddit · App Store · Indie Hackers → Claude AI → MRR Fırsatları</div>
-  </div>
-  <div class="badge">SYS ONLINE</div>
-</header>
-
-<div class="panel">
-  <div class="plabel">API & Ayarlar</div>
-  <div class="g2" style="margin-bottom:12px">
-    <div class="field">
-      <label>CLAUDE API KEY</label>
-      <input type="password" id="claudeKey" placeholder="sk-ant-api03-...">
-    </div>
-    <div class="field">
-      <label>SERP API KEY <span style="color:var(--muted);font-size:9px">(opsiyonel)</span></label>
-      <input type="password" id="serpKey" placeholder="Boş = Claude bilgisi, dolu = gerçek web verisi">
+    <div class="fb-input"><label>API KEY</label><input type="text" id="fbApiKey" placeholder="AIzaSy..."></div>
+    <div class="fb-input"><label>AUTH DOMAIN</label><input type="text" id="fbAuthDomain" placeholder="project.firebaseapp.com"></div>
+    <div class="fb-input"><label>PROJECT ID</label><input type="text" id="fbProjectId" placeholder="my-project-id"></div>
+    <div class="fb-input"><label>APP ID</label><input type="text" id="fbAppId" placeholder="1:123:web:abc"></div>
+    <div class="fb-row">
+      <button class="btn-fb-save" onclick="saveFirebaseConfig()">Kaydet & Bağlan</button>
+      <button class="btn-fb-skip" onclick="skipFirebase()">Google Auth olmadan devam et</button>
     </div>
   </div>
-  <div class="g2">
-    <div class="field">
-      <label>HEDEF PAZAR</label>
-      <select id="market">
-        <option value="Global">🌍 Global</option>
-        <option value="US">🇺🇸 US Market</option>
-        <option value="Europe">🇪🇺 Europe</option>
-        <option value="Asia">🌏 Asia Pacific</option>
-      </select>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">iOS OPPORTUNITY <span>RADAR</span></div>
+    <div class="auth-sub">// TWITTER · REDDIT · APP STORE · SERP</div>
+    <div class="auth-desc">Twitter, Reddit ve App Store verilerini Claude AI ile analiz ederek düşük rekabetli yüksek MRR potansiyelli iOS fırsatları bul.</div>
+    <button class="btn-google" onclick="signInGoogle()">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Google ile Giriş Yap
+    </button>
+    <div class="auth-skip" onclick="skipAuth()">Giriş yapmadan devam et</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav class="topnav">
+    <div class="nav-brand">iOS <span>RADAR</span></div>
+    <div class="nav-tabs">
+      <button class="nav-tab on" onclick="showPage('radar')">📡 Radar</button>
+      <button class="nav-tab" onclick="showPage('dashboard')">⭐ Favoriler</button>
     </div>
-    <div class="field" style="display:flex;align-items:flex-end">
-      <div id="modeBox" style="width:100%;padding:9px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);font-family:'Space Mono',monospace;font-size:11px;color:var(--muted2)">
-        🧠 Mod: Claude bilgisi
+    <div style="margin-left:12px;display:flex;align-items:center;gap:8px">
+      <div class="lang-toggle">
+        <span class="lang-label" id="lblTr">TR</span>
+        <label class="lang-switch">
+          <input type="checkbox" id="langToggle" onchange="setLang(this.checked?'en':'tr')">
+          <span class="lang-slider"></span>
+        </label>
+        <span class="lang-label" id="lblEn">EN</span>
       </div>
     </div>
+    <div class="nav-right" id="navRight"><span class="guest-pill">👤 Misafir</span></div>
+  </nav>
+
+  <div class="body-wrap">
+    <aside class="sidebar">
+      <div class="sb-label">API Anahtarları</div>
+      <div class="field"><label>CLAUDE API KEY</label><input type="password" id="claudeKey" placeholder="sk-ant-api03-..."></div>
+      <div class="field">
+        <label>SERP API KEY <span style="color:var(--muted);font-size:8px">(opsiyonel)</span></label>
+        <input type="password" id="serpKey" placeholder="Boş=Claude, dolu=gerçek web verisi">
+      </div>
+      <div id="modeBox">🧠 Mod: Claude bilgisi</div>
+
+      <div class="sb-label">Tarama Ayarları</div>
+      <div class="field"><label>ÖZEL NİCHE</label><input type="text" id="niche" placeholder="örn: longevity, B2B..."></div>
+      <div class="field"><label>HEDEF PAZAR</label>
+        <select id="market">
+          <option value="Global">🌍 Global</option>
+          <option value="US">🇺🇸 US Market</option>
+          <option value="Europe">🇪🇺 Europe</option>
+          <option value="Asia">🌏 Asia</option>
+        </select>
+      </div>
+      <div class="field"><label>MRR HEDEFİ</label>
+        <select id="mrr">
+          <option value="$10K">$10K+</option>
+          <option value="$50K" selected>$50K+</option>
+          <option value="$100K">$100K+</option>
+          <option value="$500K">$500K+</option>
+        </select>
+      </div>
+
+      <div class="sb-label">Kategoriler</div>
+      <div class="chips" id="chipArea">
+        <button class="chip on" data-cat="AI Tools">🤖 AI</button>
+        <button class="chip on" data-cat="Health & Fitness">💪 Health</button>
+        <button class="chip on" data-cat="Personal Finance">💰 Finance</button>
+        <button class="chip" data-cat="Productivity">⚡ Productivity</button>
+        <button class="chip" data-cat="Mental Health">🧠 Mental</button>
+        <button class="chip" data-cat="Education">📚 Education</button>
+        <button class="chip" data-cat="Dating">💬 Dating</button>
+        <button class="chip" data-cat="Travel">✈️ Travel</button>
+        <button class="chip" data-cat="Pets">🐾 Pets</button>
+        <button class="chip" data-cat="Creator Tools">🎨 Creator</button>
+        <button class="chip" data-cat="Home & Real Estate">🏠 Home</button>
+        <button class="chip" data-cat="Food & Nutrition">🥗 Food</button>
+        <button class="chip" data-cat="Sleep">😴 Sleep</button>
+        <button class="chip" data-cat="B2B & Business">💼 B2B</button>
+        <button class="chip" data-cat="Crypto & Web3">₿ Crypto</button>
+        <button class="chip" data-cat="Sports">🏃 Sports</button>
+        <button class="chip" data-cat="Parenting">👶 Parenting</button>
+        <button class="chip" data-cat="Career">🎯 Career</button>
+        <button class="chip" data-cat="Photo & Video">📸 Photo</button>
+        <button class="chip" data-cat="Gaming">🎮 Gaming</button>
+        <button class="chip" data-cat="Green Tech">🌱 Green</button>
+        <button class="chip" data-cat="Seniors">👴 Seniors</button>
+      </div>
+
+      <button class="btn-scan" id="btnScan" onclick="scan()">
+        <span id="bico">⚡</span><span id="btxt">FIRSAT TARA</span>
+      </button>
+      <button class="btn-clear" onclick="clearAll()">🗑 Temizle</button>
+
+      <div class="prog-wrap" id="pw">
+        <div class="prog-track"><div class="prog-fill" id="pf"></div></div>
+        <div class="log-box" id="lb"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- RADAR PAGE -->
+      <div class="page show" id="pageRadar">
+        <div id="emptyState" style="text-align:center;padding:80px 20px">
+          <div style="font-size:48px;margin-bottom:16px;opacity:.35">📡</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--muted2)">SINYAL BEKLENİYOR</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:8px">Sol panelden ayarlarını yap ve tara</div>
+        </div>
+        <div id="resultsWrap" style="display:none">
+          <div class="res-header">
+            <div>
+              <div class="res-title">BULUNAN FIRSATLAR</div>
+              <div class="res-meta" id="resMeta"></div>
+            </div>
+            <div class="toolbar">
+              <button class="sbtn on" id="so" onclick="doSort('opportunityScore','so')">⬆ Fırsat</button>
+              <button class="sbtn" id="sm" onclick="doSort('mrrScore','sm')">💰 MRR</button>
+              <button class="sbtn" id="sc" onclick="doSort('competitionScore','sc')">🎯 Az Rekabet</button>
+              <button class="btn-excel" id="btnExcel" onclick="exportExcel()">📊 Excel</button>
+            </div>
+          </div>
+          <div class="ideas-grid" id="ig"></div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD PAGE -->
+      <div class="page" id="pageDashboard">
+        <div class="dash-hdr">
+          <div class="dash-title">⭐ FAVORİLERİM</div>
+          <div class="dash-sub" id="dashSub">Kaydettiğin fırsatlar burada görünür</div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-val" id="statFavs">0</div><div class="stat-lbl">FAVORİ</div></div>
+          <div class="stat-card"><div class="stat-val" id="statAvgOpp">—</div><div class="stat-lbl">ORT. FIRSAT SKORU</div></div>
+          <div class="stat-card"><div class="stat-val" id="statTopMrr">—</div><div class="stat-lbl">EN YÜKSEK MRR</div></div>
+        </div>
+        <div class="fav-grid" id="favGrid"></div>
+      </div>
+    </main>
   </div>
 </div>
-
-<div class="panel">
-  <div class="plabel">Tarama Hedefi</div>
-  <div class="g2" style="margin-bottom:14px">
-    <div class="field">
-      <label>ÖZEL NİCHE (opsiyonel)</label>
-      <input type="text" id="niche" placeholder="örn: longevity, B2B SaaS, crypto...">
-    </div>
-    <div class="field">
-      <label>MRR HEDEFİ</label>
-      <select id="mrr">
-        <option value="$10K">$10K+</option>
-        <option value="$50K" selected>$50K+</option>
-        <option value="$100K">$100K+</option>
-        <option value="$500K">$500K+</option>
-      </select>
-    </div>
-  </div>
-  <div class="field">
-    <label>KATEGORİ SEÇ (birden fazla seçilebilir)</label>
-    <div class="chips" id="chipArea">
-      <button class="chip on"  data-cat="AI Tools">🤖 AI Tools</button>
-      <button class="chip on"  data-cat="Health & Fitness">💪 Health & Fitness</button>
-      <button class="chip on"  data-cat="Personal Finance">💰 Finance</button>
-      <button class="chip"     data-cat="Productivity">⚡ Productivity</button>
-      <button class="chip"     data-cat="Mental Health">🧠 Mental Health</button>
-      <button class="chip"     data-cat="Education & Learning">📚 Education</button>
-      <button class="chip"     data-cat="Dating & Relationships">💬 Dating</button>
-      <button class="chip"     data-cat="Travel & Navigation">✈️ Travel</button>
-      <button class="chip"     data-cat="Pets & Animals">🐾 Pets</button>
-      <button class="chip"     data-cat="Creator & Content Tools">🎨 Creator</button>
-      <button class="chip"     data-cat="Home & Real Estate">🏠 Home</button>
-      <button class="chip"     data-cat="Food & Nutrition">🥗 Food</button>
-      <button class="chip"     data-cat="Sleep & Recovery">😴 Sleep</button>
-      <button class="chip"     data-cat="Business & B2B">💼 B2B</button>
-      <button class="chip"     data-cat="Crypto & Web3">₿ Crypto</button>
-      <button class="chip"     data-cat="Sports & Outdoor">🏃 Sports</button>
-      <button class="chip"     data-cat="Parenting & Kids">👶 Parenting</button>
-      <button class="chip"     data-cat="Career & Job Search">🎯 Career</button>
-      <button class="chip"     data-cat="Photography & Video">📸 Photo/Video</button>
-      <button class="chip"     data-cat="Gaming & Entertainment">🎮 Gaming</button>
-      <button class="chip"     data-cat="Sustainability & Environment">🌱 Green Tech</button>
-      <button class="chip"     data-cat="Senior & Accessibility">👴 Seniors</button>
-    </div>
-  </div>
-</div>
-
-<div class="action-row">
-  <button class="btn btn-sec" onclick="clearAll()" title="Temizle">🗑</button>
-  <button class="btn btn-excel" id="btnExcel" onclick="exportExcel()" style="display:none">📊 Excel İndir</button>
-  <button class="btn btn-primary" id="btnScan" onclick="scan()">
-    <span id="bico">⚡</span><span id="btxt">FIRSAT TARA</span>
-  </button>
-</div>
-
-<div class="prog-wrap" id="pw">
-  <div class="prog-track"><div class="prog-fill" id="pf"></div></div>
-  <div class="log-box" id="lb"></div>
-</div>
-
-<div id="rs" style="display:none">
-  <div class="res-header">
-    <div>
-      <div class="res-title">BULUNAN FIRSATLAR</div>
-      <div class="res-count" id="rc"></div>
-    </div>
-  </div>
-  <div class="sort-row">
-    <button class="sbtn on" id="so" onclick="doSort('opportunityScore','so')">⬆ Fırsat</button>
-    <button class="sbtn"    id="sm" onclick="doSort('mrrScore','sm')">💰 MRR</button>
-    <button class="sbtn"    id="sc" onclick="doSort('competitionScore','sc')">🎯 Az Rekabet</button>
-  </div>
-  <div class="ideas-grid" id="ig"></div>
-</div>
-
-<div class="empty show" id="es">
-  <div class="empty-ico">📡</div>
-  <div class="empty-t">SINYAL BEKLENİYOR</div>
-  <div class="empty-s">API key gir · kategori seç · tara</div>
-</div>
-
-</div><!-- wrap -->
 
 <script>
-let ideas = [], scanning = false;
+// ── FIREBASE SETUP ──
+let auth = null, firebaseReady = false;
 
-document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => c.classList.toggle('on')));
-
-function lg(msg, type='') {
-  const b = document.getElementById('lb');
-  const d = document.createElement('div');
-  d.className = 'll ' + type;
-  const t = new Date().toLocaleTimeString('tr',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  d.innerHTML = `<span class="t">[${t}]</span><span class="m">${msg}</span>`;
-  b.appendChild(d); b.scrollTop = b.scrollHeight;
+function initFirebase(config) {
+  try {
+    if (firebase.apps.length) firebase.app().delete();
+    firebase.initializeApp(config);
+    auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+    window._fbProvider = provider;
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      if (user) {
+        const k = 'ior_favs_' + user.uid;
+        favorites = JSON.parse(localStorage.getItem(k) || '{}');
+      }
+      updateNav();
+      renderDashboard();
+    });
+    firebaseReady = true;
+    return true;
+  } catch(e) { console.error(e); return false; }
 }
-function sp(p) { document.getElementById('pf').style.width = p + '%'; }
 
-// Update mode indicator when serpKey changes
-document.addEventListener('DOMContentLoaded', () => {
-  const sk = document.getElementById('serpKey');
-  if (sk) sk.addEventListener('input', updateMode);
-});
-function updateMode() {
-  const hasSerpKey = document.getElementById('serpKey')?.value.trim();
-  const box = document.getElementById('modeBox');
-  if (!box) return;
-  if (hasSerpKey) {
-    box.style.color = 'var(--orange)';
-    box.style.borderColor = 'rgba(255,107,43,.4)';
-    box.textContent = '🔍 Mod: SerpAPI + Claude (gerçek veri)';
+// Check saved config
+const savedFbConfig = JSON.parse(localStorage.getItem('ior_fb_config') || 'null');
+if (savedFbConfig) {
+  initFirebase(savedFbConfig);
+  document.getElementById('app').classList.add('show');
+} else {
+  document.getElementById('fbModal').classList.add('show');
+}
+
+function saveFirebaseConfig() {
+  const config = {
+    apiKey: document.getElementById('fbApiKey').value.trim(),
+    authDomain: document.getElementById('fbAuthDomain').value.trim(),
+    projectId: document.getElementById('fbProjectId').value.trim(),
+    appId: document.getElementById('fbAppId').value.trim(),
+  };
+  if (!config.apiKey) { alert('API key gerekli!'); return; }
+  localStorage.setItem('ior_fb_config', JSON.stringify(config));
+  if (initFirebase(config)) {
+    document.getElementById('fbModal').classList.remove('show');
+    document.getElementById('authScreen').style.display = 'flex';
   } else {
-    box.style.color = 'var(--muted2)';
-    box.style.borderColor = 'var(--border2)';
-    box.textContent = '🧠 Mod: Claude bilgisi';
+    alert('Firebase bağlantısı başarısız. Config\'i kontrol et.');
   }
 }
 
-// SerpAPI search via proxy
-async function serpSearch(serpKey, query) {
-  const r = await fetch('/api/serp', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ serpKey, query, num: 8 })
-  });
-  if (!r.ok) throw new Error('SerpAPI proxy hatası: ' + r.status);
-  const d = await r.json();
-  return (d.organic_results || []).map(x => '• ' + x.title + ': ' + (x.snippet||'')).join('\n');
+function skipFirebase() {
+  document.getElementById('fbModal').classList.remove('show');
+  document.getElementById('app').classList.add('show');
 }
 
-// Source config
-const SOURCE_META = {
-  twitter:      { label: 'Twitter/X',      cls: 'src-twitter',      ico: '𝕏',  bg: 'rgba(0,212,255,.1)'  },
-  reddit:       { label: 'Reddit',          cls: 'src-reddit',       ico: '📋', bg: 'rgba(255,107,43,.1)' },
-  appstore:     { label: 'App Store',       cls: 'src-appstore',     ico: '📱', bg: 'rgba(0,255,136,.1)'  },
-  indiehackers: { label: 'Indie Hackers',   cls: 'src-indiehackers', ico: '🚀', bg: 'rgba(180,120,255,.1)'},
-  producthunt:  { label: 'Product Hunt',    cls: 'src-producthunt',  ico: '🔍', bg: 'rgba(255,80,40,.1)'  },
-};
+function signInGoogle() {
+  if (!firebaseReady || !auth) { alert('Firebase kurulmadı!'); return; }
+  auth.signInWithPopup(window._fbProvider).then(() => {
+    document.getElementById('authScreen').style.display = 'none';
+  }).catch(e => alert('Giriş hatası: ' + e.message));
+}
+
+function skipAuth() {
+  document.getElementById('authScreen').style.display = 'none';
+}
+
+function signOut() {
+  if (auth) auth.signOut().then(() => {
+    document.getElementById('authScreen').style.display = 'flex';
+  });
+}
+
+// ── STATE ──
+let ideas = [], scanning = false, currentUser = null;
+let favorites = JSON.parse(localStorage.getItem('ior_favs') || '{}');
+
+function saveFavs() {
+  const k = currentUser ? 'ior_favs_' + currentUser.uid : 'ior_favs';
+  localStorage.setItem(k, JSON.stringify(favorites));
+}
+
+function toggleFav(id) {
+  if (favorites[id]) delete favorites[id];
+  else { const x = ideas.find(i => i._id === id); if (x) favorites[id] = {...x, savedAt: Date.now()}; }
+  saveFavs();
+  renderIdeas(false);
+  renderDashboard();
+}
+
+function updateNav() {
+  const el = document.getElementById('navRight');
+  if (currentUser) {
+    el.innerHTML = `<div class="user-pill"><img class="user-avatar" src="${currentUser.photoURL||''}" onerror="this.style.display='none'"><span class="user-name">${currentUser.displayName||currentUser.email}</span></div><button class="btn-signout" onclick="signOut()">Çıkış</button>`;
+  } else {
+    el.innerHTML = `<span class="guest-pill">👤 Misafir</span>`;
+  }
+}
+
+// ── NAVIGATION ──
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('show'));
+  document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('on'));
+  document.getElementById('page'+p.charAt(0).toUpperCase()+p.slice(1)).classList.add('show');
+  document.querySelectorAll('.nav-tab')[p==='radar'?0:1].classList.add('on');
+  if (p==='dashboard') renderDashboard();
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+  document.getElementById('serpKey').addEventListener('input', updateMode);
+});
+
+function updateMode() {
+  const has = document.getElementById('serpKey').value.trim();
+  const b = document.getElementById('modeBox');
+  if (has) { b.style.color='var(--orange)'; b.style.borderColor='rgba(255,107,43,.4)'; b.textContent='🔍 SerpAPI + Claude'; }
+  else { b.style.color='var(--muted2)'; b.style.borderColor='var(--border2)'; b.textContent='🧠 Mod: Claude bilgisi'; }
+}
+
+// ── LOGGING ──
+function lg(msg, type='') {
+  const b=document.getElementById('lb');
+  const d=document.createElement('div'); d.className='ll '+type;
+  const t=new Date().toLocaleTimeString('tr',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  d.innerHTML=`<span class="t">[${t}]</span><span class="m">${msg}</span>`;
+  b.appendChild(d); b.scrollTop=b.scrollHeight;
+}
+function sp(p){document.getElementById('pf').style.width=p+'%';}
+
+// ── API CALLS ──
+async function serpSearch(serpKey, query) {
+  const r=await fetch('/api/serp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serpKey,query,num:8})});
+  if(!r.ok) throw new Error('SerpAPI: '+r.status);
+  const d=await r.json();
+  return (d.organic_results||[]).map(x=>'• '+x.title+': '+(x.snippet||'')).join('\n');
+}
 
 async function callClaude(prompt) {
-  const key = document.getElementById('claudeKey').value.trim();
-  if (!key) throw new Error('Claude API key girilmedi');
-  const r = await fetch('/api/claude', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      userKey: key,
-      model:'claude-sonnet-4-20250514',
-      max_tokens:5000,
-      messages:[{role:'user',content:prompt}]
-    })
-  });
-  if (!r.ok) {
-    const e = await r.json().catch(()=>({}));
-    throw new Error(e.error?.message || `HTTP ${r.status}`);
-  }
-  const d = await r.json();
-  return d.content.map(b => b.type==='text' ? b.text : '').join('\n');
-}
-
-function makePrompt(catSlice, niche, mrr, market) {
-  const focus = niche ? [niche, ...catSlice.slice(0,2)] : catSlice;
-  const catStr = focus.join(', ');
-  return `You are an expert iOS app market analyst. Based on your knowledge of Twitter/X, Reddit, App Store reviews, Indie Hackers, and Product Hunt data up to early 2025, identify 4 high-potential iOS app opportunities.
-
-Categories: ${catStr}
-Market: ${market}
-MRR target: ${mrr}
-
-Key criteria — weight these heavily:
-- LOW competition: few quality iOS apps, poor reviews on existing ones, outdated solutions
-- HIGH demand: real user pain points, vocal communities, repeat requests
-- GOOD ROI: can be built by 1-2 devs in under 6 months, clear monetization path
-- STRONG signal: evidence from multiple sources (Twitter complaints, Reddit requests, App Store gaps)
-
-For each idea, cite which SPECIFIC SOURCE(S) the demand signal came from (twitter, reddit, appstore, indiehackers, producthunt).
-
-Return ONLY a raw JSON array, no markdown, no explanation. Exactly 4 objects:
-[
-  {
-    "title": "Specific app name",
-    "category": "Category",
-    "description": "2 sentences: what it does and why there is a gap right now",
-    "mrrPotential": "$XXK-$XXXK",
-    "competitionScore": <5-80, lower=less competition>,
-    "mrrScore": <20-95, higher=more revenue>,
-    "effortScore": <15-85, lower=easier to build>,
-    "opportunityScore": <20-99>,
-    "primarySource": "<one of: twitter|reddit|appstore|indiehackers|producthunt>",
-    "twitterSignal": "Specific Twitter/X demand signal you know about",
-    "redditSignal": "Specific Reddit pain point — mention subreddit if known",
-    "appStoreGap": "What current App Store apps fail at for this niche",
-    "indieHackerSignal": "Any Indie Hackers / Product Hunt signal for this type of app",
-    "monetization": "Exact price and model e.g. $9.99/mo subscription + free tier",
-    "targetUser": "Specific persona with demographics",
-    "timeToMvp": "e.g. 2-3 months solo dev",
-    "competitorWeakness": "Why existing solutions are beatable",
-    "sources": ["twitter","reddit","appstore"]
-  }
-]`;
+  const key=document.getElementById('claudeKey').value.trim();
+  if(!key) throw new Error('Claude API key girilmedi');
+  const r=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:key,model:'claude-sonnet-4-20250514',max_tokens:6000,messages:[{role:'user',content:prompt}]})});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'Claude: '+r.status);}
+  const d=await r.json();
+  return d.content.map(b=>b.type==='text'?b.text:'').join('\n');
 }
 
 function parseJSON(raw) {
-  let s = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
-  const a = s.indexOf('['), b = s.lastIndexOf(']');
-  if (a===-1 || b===-1) return [];
-  try { return JSON.parse(s.slice(a, b+1)); } catch { return []; }
+  let s=raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+  const a=s.indexOf('['),b=s.lastIndexOf(']');
+  if(a===-1||b===-1) return [];
+  try{return JSON.parse(s.slice(a,b+1));}catch{return [];}
 }
 
-async function scan() {
-  if (scanning) return;
-  const key = document.getElementById('claudeKey').value.trim();
-  if (!key) { alert('Claude API key gerekli!'); return; }
-  const cats = [...document.querySelectorAll('.chip.on')].map(c=>c.dataset.cat);
-  const niche = document.getElementById('niche').value.trim();
-  const mrr   = document.getElementById('mrr').value;
-  const mkt   = document.getElementById('market').value;
-  if (!cats.length && !niche) { alert('Kategori seç veya niche yaz!'); return; }
+function makePrompt(cats, mrr, market, serpCtx) {
+  const catStr = cats.join(', ');
+  const serpNote = serpCtx ? `\n\nREAL SCRAPED WEB DATA — use as primary evidence:\n${serpCtx.slice(0,3500)}` : '';
+  const lang = LANGS[currentLang].promptLang;
+  return `You are an elite iOS app market analyst. Respond entirely in ${lang}. Find 4 high-potential iOS app opportunities with LOW competition and HIGH revenue.
 
-  scanning = true;
-  document.getElementById('btnScan').disabled = true;
-  document.getElementById('bico').textContent = '⏳';
-  document.getElementById('btxt').textContent = 'TARANYOR...';
-  document.getElementById('btnExcel').style.display = 'none';
+Categories: ${catStr} | Market: ${market} | MRR target: ${mrr}${serpNote}
+
+For each app, find 5 REAL competitors currently on the App Store. Include actual app names, realistic ratings, review counts, and monthly active users.
+
+Return ONLY a raw JSON array with 4 objects. No markdown. Start directly with [
+
+Each object:
+{"title":"App name","category":"Category","description":"2 sentences","mrrPotential":"$XXK-$XXXK","competitionScore":<5-80>,"mrrScore":<20-95>,"effortScore":<15-85>,"opportunityScore":<20-99>,"primarySource":"reddit|twitter|appstore","twitterSignal":"specific Twitter demand signal","redditSignal":"specific Reddit pain point with subreddit","appStoreGap":"what current apps fail at","indieHackerSignal":"Indie Hackers or PH signal","realDataEvidence":"direct quote from scraped data or null","monetization":"price and model","targetUser":"specific persona","timeToMvp":"e.g. 2-3 months","competitorWeakness":"why you can beat them","competitors":[{"name":"Real App Name","rating":3.8,"reviews":1200,"mau":"50K","weakness":"poor UX, last updated 2021"}],"sources":["twitter","reddit","appstore"]}`;
+}
+
+// ── SCAN ──
+async function scan() {
+  if(scanning) return;
+  const cKey=document.getElementById('claudeKey').value.trim();
+  const sKey=document.getElementById('serpKey').value.trim();
+  if(!cKey){alert(t('alertClaude'));return;}
+  const cats=[...document.querySelectorAll('.chip.on')].map(c=>c.dataset.cat);
+  const niche=document.getElementById('niche').value.trim();
+  const mrr=document.getElementById('mrr').value;
+  const mkt=document.getElementById('market').value;
+  if(!cats.length&&!niche){alert(t('alertCat'));return;}
+
+  const useSerpApi=sKey.length>0;
+  scanning=true;
+  document.getElementById('btnScan').disabled=true;
+  document.getElementById('bico').textContent='⏳';
+  document.getElementById('btxt').textContent='TARANYOR...';
+  document.getElementById('btnExcel').style.display='none';
   document.getElementById('pw').classList.add('show');
-  document.getElementById('es').classList.remove('show');
-  document.getElementById('rs').style.display = 'none';
-  document.getElementById('lb').innerHTML = '';
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('resultsWrap').style.display='none';
+  document.getElementById('lb').innerHTML='';
   sp(0);
 
+  const allCats=niche?[niche,...cats]:cats;
+  let serpCtx='';
+
   try {
-    // Split categories across 2 batches
-    const all_cats = niche ? [niche,...cats] : cats;
-    const mid = Math.ceil(all_cats.length / 2);
-    const b1 = all_cats.slice(0, mid);
-    const b2 = all_cats.slice(mid).length ? all_cats.slice(mid) : all_cats;
-
-    lg(`Batch 1: ${b1.join(', ')}`, 'info');
-    lg(`Batch 2: ${b2.join(', ')}`, 'info');
-    lg('İki paralel analiz başlatılıyor...', 'info');
-    sp(15);
-
-    const [r1, r2] = await Promise.all([
-      callClaude(makePrompt(b1, '', mrr, mkt)),
-      callClaude(makePrompt(b2, '', mrr, mkt))
-    ]);
-
-    sp(82);
-    lg(`Batch 1: ${r1.length} karakter alındı`, 'ok');
-    lg(`Batch 2: ${r2.length} karakter alındı`, 'ok');
-
-    let parsed = [...parseJSON(r1), ...parseJSON(r2)];
-    lg(`Parse edilen: ${parsed.length} fikir`, parsed.length ? 'ok' : 'info');
-
-    if (!parsed.length) {
-      lg('JSON temizleniyor, retry...', 'info');
-      sp(88);
-      const fix = await callClaude(
-        `Extract all JSON objects from these two API responses and return them as a single clean JSON array. Output ONLY the array.\n\nRESPONSE 1:\n${r1}\n\nRESPONSE 2:\n${r2}`
-      );
-      parsed = parseJSON(fix);
-      lg(`Retry sonucu: ${parsed.length} fikir`, parsed.length ? 'ok' : 'err');
+    if(useSerpApi) {
+      lg(t('logSerpMode'),'info');
+      const targets=allCats.slice(0,3);
+      const queries=[
+        ...targets.map(t=>`site:reddit.com "${t}" iOS app "wish there was" OR "need an app"`),
+        ...targets.slice(0,2).map(t=>`site:twitter.com "${t}" app complaints iOS 2024`),
+        targets[0]+` iOS app reviews site:apps.apple.com`,
+      ];
+      let done=0;
+      for(const q of queries) {
+        try {
+          const res=await serpSearch(sKey,q);
+          serpCtx+=`\n=== ${q.slice(0,50)} ===\n${res}\n`;
+          done++; sp(5+(done/queries.length)*40);
+          lg(`✓ ${res.split('\n').filter(Boolean).length} sonuç`,'ok');
+        } catch(e){lg('⚠ '+e.message,'warn');}
+        await new Promise(r=>setTimeout(r,350));
+      }
+      lg(t('logAnalyzing'),'info'); sp(50);
+    } else {
+      lg(t('logClaudeMode'),'info'); sp(15);
     }
 
-    if (!parsed.length) throw new Error('JSON parse başarısız. API key doğru mu?');
+    const mid=Math.ceil(allCats.length/2);
+    const b1=allCats.slice(0,mid);
+    const b2=allCats.slice(mid).length?allCats.slice(mid):allCats;
 
-    // Deduplicate
-    const seen = new Set();
-    ideas = parsed.filter(x => {
-      if (!x.title || seen.has(x.title)) return false;
+    lg(t('logParallel'),'info');
+    const [r1,r2]=await Promise.all([
+      callClaude(makePrompt(b1,mrr,mkt,serpCtx)),
+      callClaude(makePrompt(b2,mrr,mkt,serpCtx))
+    ]);
+
+    sp(88);
+    lg(`B1: ${r1.length} kr, B2: ${r2.length} kr`,'ok');
+
+    let parsed=[...parseJSON(r1),...parseJSON(r2)];
+    lg(`Parse: ${parsed.length} fikir`,parsed.length?'ok':'info');
+
+    if(!parsed.length) {
+      lg(t('logCleanup'),'info');
+      const fix=await callClaude(`Extract all JSON objects as single clean array. ONLY the array:\n\nR1:\n${r1}\n\nR2:\n${r2}`);
+      parsed=parseJSON(fix);
+    }
+
+    if(!parsed.length) throw new Error('JSON parse başarısız');
+
+    const seen=new Set();
+    ideas=parsed.filter(x=>{
+      if(!x.title||seen.has(x.title)) return false;
       seen.add(x.title); return true;
-    }).sort((a,b)=>(b.opportunityScore||0)-(a.opportunityScore||0));
+    }).map((x,i)=>({
+      ...x,
+      _id:x.title.replace(/\s+/g,'_')+'_'+i,
+      _serpMode:useSerpApi,
+      _serpVerified:useSerpApi&&x.realDataEvidence&&x.realDataEvidence!=='null'
+    })).sort((a,b)=>(b.opportunityScore||0)-(a.opportunityScore||0));
 
-    lg(`✓ ${ideas.length} fırsat bulundu!`, 'ok');
+    lg(t('logReady', ideas.length),'ok');
     sp(100);
-    render();
-    document.getElementById('btnExcel').style.display = 'flex';
-    setTimeout(()=>document.getElementById('pw').classList.remove('show'), 1800);
+    renderIdeas();
+    document.getElementById('btnExcel').style.display='inline-flex';
+    setTimeout(()=>document.getElementById('pw').classList.remove('show'),2000);
 
   } catch(e) {
-    lg('HATA: ' + e.message, 'err');
-    console.error(e);
+    lg(t('logError')+e.message,'err');
+    document.getElementById('emptyState').style.display='block';
   } finally {
-    scanning = false;
-    document.getElementById('btnScan').disabled = false;
-    document.getElementById('bico').textContent = '⚡';
-    document.getElementById('btxt').textContent = document.getElementById('serpKey')?.value.trim() ? 'GERÇEK VERİYLE TARA' : 'FIRSAT TARA';
+    scanning=false;
+    document.getElementById('btnScan').disabled=false;
+    document.getElementById('bico').textContent='⚡';
+    document.getElementById('btxt').textContent='FIRSAT TARA';
   }
 }
 
-function doSort(field, btnId) {
+// ── RENDER ──
+function doSort(field,btnId) {
   ['so','sm','sc'].forEach(id=>document.getElementById(id).classList.remove('on'));
   document.getElementById(btnId).classList.add('on');
-  if (field==='competitionScore') ideas.sort((a,b)=>(a[field]||50)-(b[field]||50));
+  if(field==='competitionScore') ideas.sort((a,b)=>(a[field]||50)-(b[field]||50));
   else ideas.sort((a,b)=>(b[field]||0)-(a[field]||0));
-  render(false);
+  renderIdeas(false);
 }
 
-function sourceTags(sources) {
-  if (!sources || !sources.length) return '';
-  return sources.map(s => {
-    const m = SOURCE_META[s] || {label:s, cls:'src-twitter', ico:'•'};
-    return `<span class="source-badge ${m.cls}">${m.ico} ${m.label}</span>`;
-  }).join('');
-}
+const SRC={twitter:{cls:'st-tw',ico:'𝕏',lbl:'Twitter'},reddit:{cls:'st-rd',ico:'📋',lbl:'Reddit'},appstore:{cls:'st-as',ico:'📱',lbl:'App Store'},indiehackers:{cls:'st-ih',ico:'🚀',lbl:'IH'}};
+function srcTag(s){const m=SRC[s]||{cls:'st-tw',ico:'•',lbl:s};return `<span class="src-tag ${m.cls}">${m.ico} ${m.lbl}</span>`;}
+function stars(r){let s='';for(let i=0;i<5;i++)s+=`<span style="color:${i<Math.floor(r||0)?'var(--orange)':'var(--border2)'}">★</span>`;return s;}
 
-function render(anim=true) {
-  document.getElementById('rs').style.display = 'block';
-  document.getElementById('es').classList.remove('show');
-  const mkt = document.getElementById('market').value;
-  const mrr = document.getElementById('mrr').value;
-  const mode = document.getElementById('serpKey')?.value.trim() ? '🔍 SerpAPI + Claude (gerçek veri)' : '🧠 Claude bilgisi';
-  document.getElementById('rc').textContent = `${ideas.length} fırsat · ${mkt} · ${mrr} hedef · ${mode}`;
+function renderIdeas(anim=true) {
+  document.getElementById('resultsWrap').style.display='block';
+  document.getElementById('emptyState').style.display='none';
+  const mode=document.getElementById('serpKey').value.trim()?'🔍 SerpAPI+Claude':'🧠 Claude';
+  document.getElementById('resMeta').textContent=`${ideas.length} fırsat · ${document.getElementById('market').value} · ${document.getElementById('mrr').value} · ${mode}`;
 
-  document.getElementById('ig').innerHTML = ideas.map((d,i) => {
-    const psrc = SOURCE_META[d.primarySource] || SOURCE_META.twitter;
-    return `
-    <div class="card" id="c${i}" style="${anim?`animation-delay:${i*.07}s`:'animation:none'}">
+  document.getElementById('ig').innerHTML=ideas.map((d,i)=>{
+    const isFav=!!favorites[d._id];
+    const badge=d._serpVerified?`<span class="badge-v">🔍 SERP</span>`:d._serpMode?`<span class="badge-s">⚠ Tahmin</span>`:`<span class="badge-c">🧠 Claude</span>`;
+    const comps=(d.competitors||[]).slice(0,5).map(c=>`<tr><td class="cn">${c.name||''}</td><td class="cr">${stars(c.rating)} ${c.rating||'?'}</td><td>${c.reviews?.toLocaleString?c.reviews.toLocaleString():c.reviews||'?'}</td><td>${c.mau||'?'}</td><td class="cw">${c.weakness||''}</td></tr>`).join('');
+    return `<div class="card" id="c${i}" style="${anim?`animation-delay:${i*.07}s`:'animation:none'}">
+      <button class="fav-btn ${isFav?'on':''}" onclick="toggleFav('${d._id}')">${isFav?'⭐':'☆'}</button>
       <div class="ctop">
         <div class="rank">${String(i+1).padStart(2,'0')}</div>
         <div class="cmain">
           <div class="ccat">${d.category||''}</div>
-          <div class="ctitle">${d.title||''}</div>
+          <div class="ctitle-row"><span class="ctitle">${d.title||''}</span>${badge}</div>
           <div class="cdesc">${d.description||''}</div>
-          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
-            <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);">KAYNAK:</span>
-            ${sourceTags(d.sources||[d.primarySource||'twitter'])}
-          </div>
+          <div class="csrc-row"><span style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted)">KAYNAK:</span>${(d.sources||['twitter','reddit','appstore']).map(srcTag).join('')}</div>
         </div>
         <div class="cright">
-          <div class="cmrr">${d.mrrPotential||'—'}</div>
-          <div class="cmrr-lbl">MRR POTANSİYEL</div>
+          <div class="cmrr">${d.mrrPotential||'—'}</div><div class="cmrr-lbl">MRR</div>
           ${d.timeToMvp?`<div class="cmvp">⏱ ${d.timeToMvp}</div>`:''}
-          <div class="cmvp" style="margin-top:5px">
-            <span class="source-badge ${psrc.cls}" style="display:inline-flex">${psrc.ico} Güçlü Sinyal</span>
-          </div>
         </div>
       </div>
-
       <div class="scores">
-        <div class="si s-comp"><div class="slbl">Rekabet ↓ iyi</div><div class="sbg"><div class="sb" style="width:${d.competitionScore||50}%"></div></div><div class="sv">${d.competitionScore||'?'}/100</div></div>
-        <div class="si s-mrr"><div class="slbl">Gelir Potansiyeli</div><div class="sbg"><div class="sb" style="width:${d.mrrScore||50}%"></div></div><div class="sv">${d.mrrScore||'?'}/100</div></div>
-        <div class="si s-eff"><div class="slbl">Efor ↓ iyi</div><div class="sbg"><div class="sb" style="width:${d.effortScore||50}%"></div></div><div class="sv">${d.effortScore||'?'}/100</div></div>
-        <div class="si s-opp"><div class="slbl">Fırsat Skoru</div><div class="sbg"><div class="sb" style="width:${d.opportunityScore||50}%"></div></div><div class="sv">${d.opportunityScore||'?'}/100</div></div>
+        <div class="si s-comp"><div class="slbl">Rekabet ↓</div><div class="sbg"><div class="sb" style="width:${d.competitionScore||50}%"></div></div><div class="sv">${d.competitionScore||'?'}/100</div></div>
+        <div class="si s-mrr"><div class="slbl">Gelir ↑</div><div class="sbg"><div class="sb" style="width:${d.mrrScore||50}%"></div></div><div class="sv">${d.mrrScore||'?'}/100</div></div>
+        <div class="si s-eff"><div class="slbl">Efor ↓</div><div class="sbg"><div class="sb" style="width:${d.effortScore||50}%"></div></div><div class="sv">${d.effortScore||'?'}/100</div></div>
+        <div class="si s-opp"><div class="slbl">Fırsat ↑</div><div class="sbg"><div class="sb" style="width:${d.opportunityScore||50}%"></div></div><div class="sv">${d.opportunityScore||'?'}/100</div></div>
       </div>
-
       <div class="insights">
-        <div class="irow">
-          <div class="iico" style="background:${SOURCE_META.twitter.bg}">𝕏</div>
-          <div class="itxt"><strong>Twitter/X Sinyali</strong><span class="src-label src-twitter">twitter</span><br>${d.twitterSignal||'N/A'}</div>
-        </div>
-        <div class="irow">
-          <div class="iico" style="background:${SOURCE_META.reddit.bg}">📋</div>
-          <div class="itxt"><strong>Reddit Pain Point</strong><span class="src-label src-reddit">reddit</span><br>${d.redditSignal||'N/A'}</div>
-        </div>
-        <div class="irow">
-          <div class="iico" style="background:${SOURCE_META.appstore.bg}">📱</div>
-          <div class="itxt"><strong>App Store Boşluğu</strong><span class="src-label src-appstore">app store</span><br>${d.appStoreGap||'N/A'}</div>
-        </div>
-        <div class="irow">
-          <div class="iico" style="background:${SOURCE_META.indiehackers.bg}">🚀</div>
-          <div class="itxt"><strong>Indie Hackers / Product Hunt</strong><span class="src-label src-indiehackers">indie hackers</span><br>${d.indieHackerSignal||'N/A'}</div>
-        </div>
-        <div class="irow">
-          <div class="iico" style="background:rgba(255,255,136,.08)">⚔️</div>
-          <div class="itxt"><strong>Rakip Zayıflığı:</strong> ${d.competitorWeakness||'N/A'}</div>
-        </div>
-        <div class="irow">
-          <div class="iico" style="background:rgba(255,255,255,.04)">💳</div>
-          <div class="itxt"><strong>Monetizasyon:</strong> ${d.monetization||'N/A'}</div>
-        </div>
-        <div class="irow">
-          <div class="iico" style="background:rgba(255,255,255,.04)">🎯</div>
-          <div class="itxt"><strong>Hedef Kullanıcı:</strong> ${d.targetUser||'N/A'}</div>
-        </div>
+        ${d.realDataEvidence&&d.realDataEvidence!=='null'?`<div class="irow"><div class="iico" style="background:rgba(255,200,0,.1)">📌</div><div class="itxt"><strong>Gerçek Veri Kanıtı:</strong><div class="real-snip">${d.realDataEvidence}</div></div></div>`:''}
+        <div class="irow"><div class="iico" style="background:rgba(0,212,255,.1)">𝕏</div><div class="itxt"><strong>Twitter/X:</strong> ${d.twitterSignal||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,107,43,.1)">📋</div><div class="itxt"><strong>Reddit:</strong> ${d.redditSignal||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(0,255,136,.1)">📱</div><div class="itxt"><strong>App Store Boşluğu:</strong> ${d.appStoreGap||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(180,120,255,.1)">🚀</div><div class="itxt"><strong>Indie Hackers:</strong> ${d.indieHackerSignal||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,255,136,.08)">⚔️</div><div class="itxt"><strong>Rakip Zayıflığı:</strong> ${d.competitorWeakness||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,255,255,.04)">💳</div><div class="itxt"><strong>Monetizasyon:</strong> ${d.monetization||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,255,255,.04)">🎯</div><div class="itxt"><strong>Hedef Kullanıcı:</strong> ${d.targetUser||'N/A'}</div></div>
       </div>
-
+      ${comps?`<div class="comp-wrap"><div class="comp-hdr">Mevcut Rakipler (App Store)</div><table class="ct"><thead><tr><th>Uygulama</th><th>Rating</th><th>Yorum</th><th>MAU</th><th>Zayıflık</th></tr></thead><tbody>${comps}</tbody></table></div>`:''}
       <div class="cfoot">
-        <div class="tags">${sourceTags(d.sources||['twitter','reddit','appstore'])}</div>
-        <button class="tbtn" onclick="tog(${i},this)">▼ Detay</button>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">${(d.sources||[]).map(srcTag).join('')}</div>
+        <button class="tbtn" onclick="tog(${i},this)">▼ Detay & Rakipler</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function tog(i, btn) {
-  const c = document.getElementById('c'+i);
+function tog(i,btn){
+  const c=document.getElementById('c'+i);
   c.classList.toggle('open');
-  btn.textContent = c.classList.contains('open') ? '▲ Gizle' : '▼ Detay';
+  btn.textContent=c.classList.contains('open')?'▲ Gizle':'▼ Detay & Rakipler';
 }
 
-// ── EXCEL EXPORT ──
-function exportExcel() {
-  if (!ideas.length) return;
-
-  const wb = XLSX.utils.book_new();
-
-  // Sheet 1: Summary
-  const summaryHeaders = [
-    'Sıra','Uygulama Adı','Kategori','MRR Potansiyeli','Fırsat Skoru',
-    'Rekabet (↓ iyi)','Gelir Skoru','Efor (↓ iyi)','MVP Süresi',
-    'Güçlü Kaynak','Kaynaklar'
-  ];
-  const summaryRows = ideas.map((d,i) => [
-    i+1,
-    d.title||'',
-    d.category||'',
-    d.mrrPotential||'',
-    d.opportunityScore||'',
-    d.competitionScore||'',
-    d.mrrScore||'',
-    d.effortScore||'',
-    d.timeToMvp||'',
-    d.primarySource||'',
-    (d.sources||[]).join(', ')
-  ]);
-  const ws1 = XLSX.utils.aoa_to_sheet([summaryHeaders, ...summaryRows]);
-  ws1['!cols'] = [4,28,20,18,14,14,12,10,16,16,28].map(w=>({wch:w}));
-  styleHeader(ws1, summaryHeaders.length);
-  XLSX.utils.book_append_sheet(wb, ws1, 'Özet');
-
-  // Sheet 2: Detailed signals
-  const detailHeaders = [
-    'Uygulama Adı','Twitter/X Sinyali','Reddit Pain Point','App Store Boşluğu',
-    'Indie Hackers Sinyali','Rakip Zayıflığı','Monetizasyon','Hedef Kullanıcı','Açıklama'
-  ];
-  const detailRows = ideas.map(d => [
-    d.title||'',
-    d.twitterSignal||'',
-    d.redditSignal||'',
-    d.appStoreGap||'',
-    d.indieHackerSignal||'',
-    d.competitorWeakness||'',
-    d.monetization||'',
-    d.targetUser||'',
-    d.description||''
-  ]);
-  const ws2 = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailRows]);
-  ws2['!cols'] = [22,40,40,36,36,36,30,30,50].map(w=>({wch:w}));
-  styleHeader(ws2, detailHeaders.length);
-  XLSX.utils.book_append_sheet(wb, ws2, 'Kaynak Sinyalleri');
-
-  // Sheet 3: Scores
-  const scoreHeaders = ['Uygulama Adı','Fırsat Skoru','Rekabet Skoru','Gelir Skoru','Efor Skoru','MRR Potansiyeli','Kategori'];
-  const scoreRows = [...ideas].sort((a,b)=>(b.opportunityScore||0)-(a.opportunityScore||0)).map(d=>[
-    d.title||'',
-    d.opportunityScore||0,
-    d.competitionScore||0,
-    d.mrrScore||0,
-    d.effortScore||0,
-    d.mrrPotential||'',
-    d.category||''
-  ]);
-  const ws3 = XLSX.utils.aoa_to_sheet([scoreHeaders, ...scoreRows]);
-  ws3['!cols'] = [26,14,14,12,12,18,22].map(w=>({wch:w}));
-  styleHeader(ws3, scoreHeaders.length);
-  XLSX.utils.book_append_sheet(wb, ws3, 'Skor Karşılaştırma');
-
-  const date = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `ios-firsatlar-${date}.xlsx`);
-}
-
-function styleHeader(ws, colCount) {
-  for (let c = 0; c < colCount; c++) {
-    const addr = XLSX.utils.encode_cell({r:0, c});
-    if (!ws[addr]) continue;
-    ws[addr].s = {
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '0A1628' } },
-      alignment: { horizontal: 'center', wrapText: true }
-    };
+// ── DASHBOARD ──
+function renderDashboard() {
+  const favs=Object.values(favorites);
+  document.getElementById('statFavs').textContent=favs.length;
+  if(favs.length){
+    document.getElementById('statAvgOpp').textContent=Math.round(favs.reduce((a,x)=>a+(x.opportunityScore||0),0)/favs.length);
+    const top=favs.reduce((a,x)=>{const v=parseInt((x.mrrPotential||'0').replace(/[^0-9]/g,''));return v>a?v:a},0);
+    document.getElementById('statTopMrr').textContent=top>0?'$'+Math.round(top/1000)+'K':'—';
+  } else {
+    document.getElementById('statAvgOpp').textContent='—';
+    document.getElementById('statTopMrr').textContent='—';
   }
+  const grid=document.getElementById('favGrid');
+  if(!favs.length){grid.innerHTML=`<div class="empty-dash"><div class="ei">⭐</div><div class="et">Favori Yok</div><div class="es">Kartlardaki ☆ butonuna tıkla</div></div>`;return;}
+  grid.innerHTML=favs.sort((a,b)=>(b.opportunityScore||0)-(a.opportunityScore||0)).map(d=>`
+    <div class="card" style="animation:none">
+      <button class="fav-btn on" onclick="removeFavFromDash('${d._id}')">⭐</button>
+      <div class="ctop">
+        <div class="rank" style="font-size:28px;width:38px">${d.opportunityScore||'?'}</div>
+        <div class="cmain">
+          <div class="ccat">${d.category||''}</div>
+          <div class="ctitle">${d.title||''}</div>
+          <div class="cdesc" style="margin-top:4px">${d.description||''}</div>
+        </div>
+        <div class="cright">
+          <div class="cmrr">${d.mrrPotential||'—'}</div><div class="cmrr-lbl">MRR</div>
+          <div class="cmvp" style="margin-top:4px">${new Date(d.savedAt||Date.now()).toLocaleDateString('tr')}</div>
+        </div>
+      </div>
+      <div class="scores">
+        <div class="si s-comp"><div class="slbl">Rekabet</div><div class="sbg"><div class="sb" style="width:${d.competitionScore||50}%"></div></div><div class="sv">${d.competitionScore||'?'}</div></div>
+        <div class="si s-mrr"><div class="slbl">Gelir</div><div class="sbg"><div class="sb" style="width:${d.mrrScore||50}%"></div></div><div class="sv">${d.mrrScore||'?'}</div></div>
+        <div class="si s-eff"><div class="slbl">Efor</div><div class="sbg"><div class="sb" style="width:${d.effortScore||50}%"></div></div><div class="sv">${d.effortScore||'?'}</div></div>
+        <div class="si s-opp"><div class="slbl">Fırsat</div><div class="sbg"><div class="sb" style="width:${d.opportunityScore||50}%"></div></div><div class="sv">${d.opportunityScore||'?'}</div></div>
+      </div>
+    </div>`).join('');
 }
 
-function clearAll() {
-  ideas = [];
-  document.getElementById('rs').style.display = 'none';
-  document.getElementById('ig').innerHTML = '';
-  document.getElementById('lb').innerHTML = '';
-  document.getElementById('pf').style.width = '0%';
-  document.getElementById('pw').classList.remove('show');
-  document.getElementById('btnExcel').style.display = 'none';
-  document.getElementById('es').classList.add('show');
+function removeFavFromDash(id){delete favorites[id];saveFavs();renderDashboard();}
+
+// ── EXCEL ──
+function exportExcel() {
+  if(!ideas.length) return;
+  const wb=XLSX.utils.book_new();
+  const s1=[['Sıra','Uygulama','Kategori','MRR','Fırsat','Rekabet','Gelir','Efor','MVP','Kaynak'],...ideas.map((d,i)=>[i+1,d.title,d.category,d.mrrPotential,d.opportunityScore,d.competitionScore,d.mrrScore,d.effortScore,d.timeToMvp,(d.sources||[]).join(', ')])];
+  const ws1=XLSX.utils.aoa_to_sheet(s1); ws1['!cols']=[4,26,18,16,10,10,10,10,14,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws1,'Özet');
+  const s2=[['Uygulama','Twitter','Reddit','App Store','IH','Rakip Zayıflığı','Monetizasyon','Hedef','Gerçek Veri'],...ideas.map(d=>[d.title,d.twitterSignal,d.redditSignal,d.appStoreGap,d.indieHackerSignal,d.competitorWeakness,d.monetization,d.targetUser,d.realDataEvidence])];
+  const ws2=XLSX.utils.aoa_to_sheet(s2); ws2['!cols']=[24,34,34,30,28,30,26,26,38].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Sinyaller');
+  const s3=[['Fikir','Rakip','Rating','Yorum','MAU','Zayıflık']];
+  ideas.forEach(d=>(d.competitors||[]).forEach(c=>s3.push([d.title,c.name,c.rating,c.reviews,c.mau,c.weakness])));
+  const ws3=XLSX.utils.aoa_to_sheet(s3); ws3['!cols']=[24,22,8,12,12,36].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws3,'Rakip Analizi');
+  XLSX.writeFile(wb,`ios-radar-${new Date().toISOString().slice(0,10)}.xlsx`);
 }
+
+function clearAll(){
+  ideas=[];
+  document.getElementById('resultsWrap').style.display='none';
+  document.getElementById('emptyState').style.display='block';
+  document.getElementById('lb').innerHTML='';
+  document.getElementById('pf').style.width='0%';
+  document.getElementById('pw').classList.remove('show');
+  document.getElementById('btnExcel').style.display='none';
+}
+
+// ── I18N ──
+const LANGS = {
+  tr: {
+    brand: 'iOS <span style="color:var(--neon)">RADAR</span>',
+    navRadar: '📡 Radar',
+    navFavs: '⭐ Favoriler',
+    guestPill: '👤 Misafir',
+    signout: 'Çıkış',
+    sbApiKeys: 'API Anahtarları',
+    lblClaude: 'CLAUDE API KEY',
+    lblSerp: 'SERP API KEY',
+    serpHint: '(opsiyonel)',
+    serpPlaceholder: 'Boş=Claude, dolu=gerçek web verisi',
+    sbSettings: 'Tarama Ayarları',
+    lblNiche: 'ÖZEL NİCHE',
+    nichePlaceholder: 'örn: longevity, B2B...',
+    lblMarket: 'HEDEF PAZAR',
+    lblMrr: 'MRR HEDEFİ',
+    sbCats: 'Kategoriler',
+    btnScan: 'FIRSAT TARA',
+    btnClear: '🗑 Temizle',
+    modeclaude: '🧠 Mod: Claude bilgisi',
+    modeserp: '🔍 SerpAPI + Claude',
+    emptyTitle: 'SINYAL BEKLENİYOR',
+    emptySub: 'Sol panelden ayarlarını yap ve tara',
+    resTitle: 'BULUNAN FIRSATLAR',
+    sortOpp: '⬆ Fırsat',
+    sortMrr: '💰 MRR',
+    sortComp: '🎯 Az Rekabet',
+    btnExcel: '📊 Excel',
+    metaMode: (n,mkt,mrr,mode) => `${n} fırsat · ${mkt} · ${mrr} · ${mode}`,
+    mrrLabel: 'MRR POTANSİYEL',
+    srcLabel: 'KAYNAK:',
+    detailBtn: '▼ Detay & Rakipler',
+    hideBtn: '▲ Gizle',
+    insTwitter: 'Twitter/X:',
+    insReddit: 'Reddit:',
+    insAppStore: 'App Store Boşluğu:',
+    insIH: 'Indie Hackers:',
+    insCompWeak: 'Rakip Zayıflığı:',
+    insMono: 'Monetizasyon:',
+    insTarget: 'Hedef Kullanıcı:',
+    insRealData: 'Gerçek Veri Kanıtı:',
+    compTitle: 'Mevcut Rakipler (App Store)',
+    compHdrApp: 'Uygulama', compHdrRating: 'Rating', compHdrReview: 'Yorum', compHdrMau: 'MAU', compHdrWeak: 'Zayıflık',
+    dashTitle: '⭐ FAVORİLERİM',
+    dashSub: 'Kaydettiğin fırsatlar burada görünür',
+    statFavLbl: 'FAVORİ', statOppLbl: 'ORT. FIRSAT SKORU', statMrrLbl: 'EN YÜKSEK MRR',
+    emptyFavTitle: 'Favori Yok', emptyFavSub: 'Kartlardaki ☆ butonuna tıkla',
+    scoreComp: 'Rekabet ↓', scoreMrr: 'Gelir ↑', scoreEff: 'Efor ↓', scoreOpp: 'Fırsat ↑',
+    badgeVerified: '🔍 SERP', badgeEst: '⚠ Tahmin', badgeClaude: '🧠 Claude',
+    logSerpMode: '🔍 SerpAPI modu aktif...', logClaudeMode: '🧠 Claude modu...', logParallel: 'Paralel analiz başlatılıyor...',
+    logSerpDone: (n) => `✓ ${n} sonuç`, logAnalyzing: 'SerpAPI tamam → Claude analiz...', logParsed: (n) => `Parse: ${n} fikir`,
+    logCleanup: 'JSON temizleniyor...', logReady: (n) => `✓ ${n} fırsat hazır!`, logError: 'HATA: ',
+    alertClaude: 'Claude API key gerekli!', alertCat: 'Kategori seç veya niche yaz!',
+    promptLang: 'Turkish', favSavedOn: (d) => d,
+    markets: {Global:'🌍 Global', US:'🇺🇸 US Market', Europe:'🇪🇺 Europe', Asia:'🌏 Asia'},
+    mrrs: {'$10K':'$10K+','$50K':'$50K+','$100K':'$100K+','$500K':'$500K+'},
+    authTitle: 'iOS OPPORTUNITY <span style="color:var(--neon)">RADAR</span>',
+    authSub: '// TWITTER · REDDIT · APP STORE · SERP',
+    authDesc: 'Twitter, Reddit ve App Store verilerini Claude AI ile analiz ederek düşük rekabetli yüksek MRR potansiyelli iOS fırsatları bul.',
+    authGoogle: 'Google ile Giriş Yap',
+    authSkip: 'Giriş yapmadan devam et',
+  },
+  en: {
+    brand: 'iOS <span style="color:var(--neon)">RADAR</span>',
+    navRadar: '📡 Radar',
+    navFavs: '⭐ Favorites',
+    guestPill: '👤 Guest',
+    signout: 'Sign Out',
+    sbApiKeys: 'API Keys',
+    lblClaude: 'CLAUDE API KEY',
+    lblSerp: 'SERP API KEY',
+    serpHint: '(optional)',
+    serpPlaceholder: 'Empty=Claude, filled=real web data',
+    sbSettings: 'Scan Settings',
+    lblNiche: 'CUSTOM NICHE',
+    nichePlaceholder: 'e.g. longevity, B2B...',
+    lblMarket: 'TARGET MARKET',
+    lblMrr: 'MRR TARGET',
+    sbCats: 'Categories',
+    btnScan: 'SCAN OPPORTUNITIES',
+    btnClear: '🗑 Clear',
+    modecloud: '🧠 Mode: Claude knowledge',
+    modeserp: '🔍 SerpAPI + Claude',
+    modecloud: '🧠 Mode: Claude knowledge',
+    emptyTitle: 'AWAITING SIGNAL',
+    emptySub: 'Configure settings in the left panel and scan',
+    resTitle: 'OPPORTUNITIES FOUND',
+    sortOpp: '⬆ Opportunity',
+    sortMrr: '💰 MRR',
+    sortComp: '🎯 Low Competition',
+    btnExcel: '📊 Excel',
+    metaMode: (n,mkt,mrr,mode) => `${n} results · ${mkt} · ${mrr} · ${mode}`,
+    mrrLabel: 'MRR POTENTIAL',
+    srcLabel: 'SOURCE:',
+    detailBtn: '▼ Details & Competitors',
+    hideBtn: '▲ Hide',
+    insTwitter: 'Twitter/X:',
+    insReddit: 'Reddit:',
+    insAppStore: 'App Store Gap:',
+    insIH: 'Indie Hackers:',
+    insCompWeak: 'Competitor Weakness:',
+    insMono: 'Monetization:',
+    insTarget: 'Target User:',
+    insRealData: 'Real Data Evidence:',
+    compTitle: 'Current Competitors (App Store)',
+    compHdrApp: 'App', compHdrRating: 'Rating', compHdrReview: 'Reviews', compHdrMau: 'MAU', compHdrWeak: 'Weakness',
+    dashTitle: '⭐ MY FAVORITES',
+    dashSub: 'Your saved opportunities appear here',
+    statFavLbl: 'FAVORITES', statOppLbl: 'AVG OPPORTUNITY', statMrrLbl: 'TOP MRR',
+    emptyFavTitle: 'No Favorites', emptyFavSub: 'Click the ☆ button on any card',
+    scoreComp: 'Competition ↓', scoreMrr: 'Revenue ↑', scoreEff: 'Effort ↓', scoreOpp: 'Opportunity ↑',
+    badgeVerified: '🔍 SERP', badgeEst: '⚠ Estimated', badgeClaude: '🧠 Claude',
+    logSerpMode: '🔍 SerpAPI mode active...', logClaudeMode: '🧠 Claude mode...', logParallel: 'Starting parallel analysis...',
+    logSerpDone: (n) => `✓ ${n} results`, logAnalyzing: 'SerpAPI done → Claude analyzing...', logParsed: (n) => `Parsed: ${n} ideas`,
+    logCleanup: 'Cleaning JSON...', logReady: (n) => `✓ ${n} opportunities ready!`, logError: 'ERROR: ',
+    alertClaude: 'Claude API key required!', alertCat: 'Select a category or enter a niche!',
+    promptLang: 'English', favSavedOn: (d) => d,
+    markets: {Global:'🌍 Global', US:'🇺🇸 US Market', Europe:'🇪🇺 Europe', Asia:'🌏 Asia'},
+    mrrs: {'$10K':'$10K+','$50K':'$50K+','$100K':'$100K+','$500K':'$500K+'},
+    authTitle: 'iOS OPPORTUNITY <span style="color:var(--neon)">RADAR</span>',
+    authSub: '// TWITTER · REDDIT · APP STORE · SERP',
+    authDesc: 'Analyze Twitter, Reddit and App Store data with Claude AI to find low-competition, high-MRR iOS app opportunities.',
+    authGoogle: 'Sign in with Google',
+    authSkip: 'Continue without signing in',
+  }
+};
+
+let currentLang = localStorage.getItem('ior_lang') || 'tr';
+
+function t(key, ...args) {
+  const v = LANGS[currentLang][key];
+  return typeof v === 'function' ? v(...args) : (v || LANGS['en'][key] || key);
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('ior_lang', lang);
+  document.getElementById('langToggle').checked = lang === 'en';
+  document.getElementById('lblTr').classList.toggle('on', lang === 'tr');
+  document.getElementById('lblEn').classList.toggle('on', lang === 'en');
+  applyLang();
+}
+
+function applyLang() {
+  const L = LANGS[currentLang];
+  // Nav
+  document.querySelector('.nav-brand').innerHTML = L.brand;
+  const tabs = document.querySelectorAll('.nav-tab');
+  if(tabs[0]) tabs[0].textContent = L.navRadar;
+  if(tabs[1]) tabs[1].textContent = L.navFavs;
+  // Sidebar labels
+  const sblabels = document.querySelectorAll('.sb-label');
+  if(sblabels[0]) sblabels[0].textContent = L.sbApiKeys;
+  if(sblabels[1]) sblabels[1].textContent = L.sbSettings;
+  if(sblabels[2]) sblabels[2].textContent = L.sbCats;
+  // Field labels
+  const fieldLabels = document.querySelectorAll('.field label');
+  if(fieldLabels[0]) fieldLabels[0].textContent = L.lblClaude;
+  if(fieldLabels[1]) { fieldLabels[1].innerHTML = L.lblSerp + ' <span style="color:var(--muted);font-size:8px">' + L.serpHint + '</span>'; }
+  if(fieldLabels[2]) fieldLabels[2].textContent = L.lblNiche;
+  if(fieldLabels[3]) fieldLabels[3].textContent = L.lblMarket;
+  if(fieldLabels[4]) fieldLabels[4].textContent = L.lblMrr;
+  // Inputs
+  const serpInput = document.getElementById('serpKey');
+  if(serpInput) serpInput.placeholder = L.serpPlaceholder;
+  const nicheInput = document.getElementById('niche');
+  if(nicheInput) nicheInput.placeholder = L.nichePlaceholder;
+  // Mode box
+  const sKey = document.getElementById('serpKey')?.value.trim();
+  const modeBox = document.getElementById('modeBox');
+  if(modeBox) modeBox.textContent = sKey ? L.modeserp : (L.modecloud || L.modecloud || '🧠');
+  // Buttons
+  document.getElementById('btxt').textContent = L.btnScan;
+  document.querySelector('.btn-clear').textContent = L.btnClear;
+  // Empty state
+  const et = document.querySelector('#emptyState div:nth-child(2)');
+  const es = document.querySelector('#emptyState div:nth-child(3)');
+  if(et) et.textContent = L.emptyTitle;
+  if(es) es.textContent = L.emptySub;
+  // Results
+  const resTitle = document.querySelector('.res-title');
+  if(resTitle) resTitle.textContent = L.resTitle;
+  const sortBtns = document.querySelectorAll('.sbtn');
+  if(sortBtns[0]) sortBtns[0].textContent = L.sortOpp;
+  if(sortBtns[1]) sortBtns[1].textContent = L.sortMrr;
+  if(sortBtns[2]) sortBtns[2].textContent = L.sortComp;
+  const excelBtn = document.getElementById('btnExcel');
+  if(excelBtn) excelBtn.textContent = L.btnExcel;
+  // Dashboard
+  const dashT = document.querySelector('.dash-title');
+  if(dashT) dashT.textContent = L.dashTitle;
+  const dashS = document.getElementById('dashSub');
+  if(dashS) dashS.textContent = L.dashSub;
+  document.querySelector('#statFavs')?.parentElement?.querySelector('.stat-lbl')?.textContent && (document.querySelectorAll('.stat-lbl')[0].textContent = L.statFavLbl);
+  document.querySelectorAll('.stat-lbl')[1] && (document.querySelectorAll('.stat-lbl')[1].textContent = L.statOppLbl);
+  document.querySelectorAll('.stat-lbl')[2] && (document.querySelectorAll('.stat-lbl')[2].textContent = L.statMrrLbl);
+  // Nav right guest
+  updateNav();
+  // Re-render if ideas exist
+  if(ideas.length) renderIdeas(false);
+  if(document.getElementById('pageDashboard').classList.contains('show')) renderDashboard();
+}
+
+// Override updateMode to use i18n
+const _origUpdateMode = updateMode;
+updateMode = function() {
+  const has = document.getElementById('serpKey').value.trim();
+  const b = document.getElementById('modeBox');
+  const L = LANGS[currentLang];
+  if(has){ b.style.color='var(--orange)'; b.style.borderColor='rgba(255,107,43,.4)'; b.textContent=L.modeserp; }
+  else { b.style.color='var(--muted2)'; b.style.borderColor='var(--border2)'; b.textContent=(L.modecloud||'🧠 Claude'); }
+};
+
+// Init lang on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('langToggle').checked = currentLang === 'en';
+  document.getElementById('lblTr').classList.toggle('on', currentLang === 'tr');
+  document.getElementById('lblEn').classList.toggle('on', currentLang === 'en');
+  applyLang();
+});
+
 </script>
 </body>
 </html>
