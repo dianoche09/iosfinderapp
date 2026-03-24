@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS Opportunity Radar — SerpAPI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
+:root {
+  --bg:#030508;--surface:#080e14;--surface2:#0d1820;
+  --border:#0f2233;--border2:#163247;
+  --neon:#00ff88;--neon2:#00d4ff;--orange:#ff6b2b;--red:#ff2d55;
+  --text:#c8dde8;--muted:#3a6077;--muted2:#5a8099;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 80px;position:relative;z-index:1;}
+
+header{padding:32px 0 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--border2);margin-bottom:28px;}
+.brand-top{display:flex;align-items:center;gap:12px;}
+.pulse-ring{width:34px;height:34px;border:1.5px solid var(--neon);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
+.pulse-ring::before{content:'';position:absolute;border-radius:50%;border:1px solid var(--neon);animation:ripple 2.5s ease-out infinite;}
+@keyframes ripple{0%{width:34px;height:34px;opacity:.5}100%{width:70px;height:70px;opacity:0}}
+.pulse-core{width:8px;height:8px;background:var(--neon);border-radius:50%;box-shadow:0 0 8px var(--neon);z-index:1;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:2px;color:#fff;line-height:1;}
+h1 span{color:var(--orange);}
+.brand-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;padding-left:46px;margin-top:4px;}
+.badge{font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);border:1px solid rgba(255,107,43,.3);padding:4px 10px;border-radius:4px;display:flex;align-items:center;gap:6px;background:rgba(255,107,43,.05);}
+.badge::before{content:'';width:6px;height:6px;background:var(--orange);border-radius:50%;animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0}}
+
+.mode-tabs{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border2);border-radius:9px;overflow:hidden;}
+.mode-tab{flex:1;padding:10px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;background:transparent;color:var(--muted2);border:none;transition:all .2s;letter-spacing:.05em;}
+.mode-tab.on{background:var(--surface);color:var(--orange);}
+
+.panel{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;margin-bottom:14px;}
+.plabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:13px;display:flex;align-items:center;gap:8px;}
+.plabel::after{content:'';flex:1;height:1px;background:var(--border2);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@media(max-width:640px){.g2,.g3{grid-template-columns:1fr;}}
+.field label{display:block;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2);letter-spacing:.1em;margin-bottom:5px;}
+input[type=text],input[type=password],select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;transition:border-color .2s;}
+input:focus,select:focus{border-color:var(--neon);}
+select option{background:#0d1820;}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.chip{padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--neon2);color:var(--neon2);}
+.chip.on{border-color:var(--neon);color:var(--neon);background:rgba(0,255,136,.08);}
+
+.action-row{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+.btn{padding:12px 22px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.btn-primary{background:var(--neon);color:#000;flex:1;}
+.btn-primary:hover{background:#2fffaa;box-shadow:0 6px 20px rgba(0,255,136,.3);transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-sec{background:transparent;border:1px solid var(--border2);color:var(--muted2);}
+.btn-sec:hover{border-color:var(--neon2);color:var(--neon2);}
+.btn-excel{background:transparent;border:1px solid rgba(0,255,136,.4);color:var(--neon);font-size:13px;}
+.btn-excel:hover{background:rgba(0,255,136,.1);}
+
+.prog-wrap{display:none;margin-bottom:22px;}
+.prog-wrap.show{display:block;}
+.prog-track{height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:13px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--neon),var(--orange));border-radius:3px;width:0%;transition:width .4s ease;box-shadow:0 0 10px var(--neon);}
+.log-box{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;font-family:'Space Mono',monospace;font-size:11px;max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+.ll{display:flex;gap:8px;line-height:1.5;}
+.ll .t{color:var(--muted);flex-shrink:0;}
+.ll .m{color:var(--text);}
+.ll.ok .m{color:var(--neon);}
+.ll.err .m{color:var(--red);}
+.ll.info .m{color:var(--neon2);}
+.ll.warn .m{color:var(--orange);}
+
+.res-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.res-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#fff;}
+.res-count{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted2);margin-top:3px;}
+.sort-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;}
+.sbtn{padding:5px 11px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
+.sbtn.on{border-color:var(--orange);color:var(--orange);background:rgba(255,107,43,.1);}
+.ideas-grid{display:flex;flex-direction:column;gap:13px;}
+
+.card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;transition:all .22s;position:relative;overflow:hidden;animation:cin .35s ease both;}
+@keyframes cin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--neon),var(--orange));opacity:0;transition:opacity .22s;}
+.card:hover{border-color:rgba(0,255,136,.25);transform:translateY(-2px);box-shadow:0 6px 28px rgba(0,0,0,.35);}
+.card:hover::before{opacity:1;}
+.card:hover .rank{color:var(--neon);}
+
+.ctop{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;}
+.rank{font-family:'Bebas Neue',sans-serif;font-size:40px;line-height:1;color:var(--border2);flex-shrink:0;width:48px;text-align:center;transition:color .2s;}
+.cmain{flex:1;}
+.ccat{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--neon2);text-transform:uppercase;margin-bottom:4px;}
+.ctitle{font-size:18px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:6px;}
+.cdesc{font-size:13px;color:var(--muted2);line-height:1.6;}
+.cright{text-align:right;flex-shrink:0;}
+.cmrr{font-family:'Bebas Neue',sans-serif;font-size:25px;letter-spacing:1px;color:var(--neon);}
+.cmrr-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
+.cmvp{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px;}
+
+.source-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;font-family:'Space Mono',monospace;font-size:9px;margin-top:6px;border:1px solid;}
+.src-twitter{background:rgba(0,212,255,.08);color:var(--neon2);border-color:rgba(0,212,255,.2);}
+.src-reddit{background:rgba(255,107,43,.08);color:var(--orange);border-color:rgba(255,107,43,.2);}
+.src-appstore{background:rgba(0,255,136,.08);color:var(--neon);border-color:rgba(0,255,136,.2);}
+.src-indiehackers{background:rgba(180,120,255,.08);color:#b47fff;border-color:rgba(180,120,255,.2);}
+.src-serpapi{background:rgba(255,200,0,.08);color:#ffc800;border-color:rgba(255,200,0,.2);}
+
+.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
+@media(max-width:520px){.scores{grid-template-columns:repeat(2,1fr);}}
+.si{display:flex;flex-direction:column;gap:5px;}
+.slbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;}
+.sbg{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+.sb{height:100%;border-radius:2px;}
+.sv{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;}
+.s-comp .sb{background:var(--red);}.s-comp .sv{color:var(--red);}
+.s-mrr .sb{background:var(--neon);}.s-mrr .sv{color:var(--neon);}
+.s-eff .sb{background:var(--orange);}.s-eff .sv{color:var(--orange);}
+.s-opp .sb{background:var(--neon2);}.s-opp .sv{color:var(--neon2);}
+
+.insights{display:none;flex-direction:column;gap:9px;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
+.card.open .insights{display:flex;}
+.irow{display:flex;gap:9px;align-items:flex-start;}
+.iico{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:2px;}
+.itxt{font-size:12px;color:var(--text);line-height:1.55;}
+.itxt strong{color:#fff;font-weight:600;}
+
+/* Real data snippet */
+.real-data{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;margin-top:10px;}
+.real-data-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--orange);letter-spacing:.15em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.real-data-label::before{content:'';width:5px;height:5px;background:var(--orange);border-radius:50%;}
+.real-snippet{font-size:11px;color:var(--muted2);line-height:1.6;font-family:'Space Mono',monospace;}
+
+.cfoot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:7px;}
+.tags{display:flex;gap:5px;flex-wrap:wrap;}
+.tbtn{padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;}
+.tbtn:hover{border-color:var(--neon2);color:var(--neon2);}
+
+.empty{text-align:center;padding:72px 24px;display:none;}
+.empty.show{display:block;}
+.empty-ico{font-size:44px;margin-bottom:14px;opacity:.45;}
+.empty-t{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--muted2);}
+.empty-s{font-size:13px;color:var(--muted);margin-top:6px;}
+
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--surface2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <div class="brand-top">
+      <div class="pulse-ring"><div class="pulse-core"></div></div>
+      <h1>iOS OPPORTUNITY <span>RADAR</span> <span style="font-size:18px;color:var(--orange);letter-spacing:1px">+ SERP</span></h1>
+    </div>
+    <div class="brand-sub">// Gerçek Web Verisi → SerpAPI + Claude AI → MRR Fırsatları</div>
+  </div>
+  <div class="badge">SERP ONLINE</div>
+</header>
+
+<div class="panel">
+  <div class="plabel">API Anahtarları</div>
+  <div class="g3">
+    <div class="field">
+      <label>CLAUDE API KEY</label>
+      <input type="password" id="claudeKey" placeholder="sk-ant-api03-...">
+    </div>
+    <div class="field">
+      <label>SERP API KEY</label>
+      <input type="password" id="serpKey" placeholder="serpapi key...">
+    </div>
+    <div class="field">
+      <label>HEDEF PAZAR</label>
+      <select id="market">
+        <option value="Global">🌍 Global</option>
+        <option value="US">🇺🇸 US Market</option>
+        <option value="Europe">🇪🇺 Europe</option>
+        <option value="Asia">🌏 Asia Pacific</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="plabel">Tarama Hedefi</div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="field">
+      <label>ÖZEL NİCHE (opsiyonel)</label>
+      <input type="text" id="niche" placeholder="örn: longevity, B2B SaaS, crypto...">
+    </div>
+    <div class="field">
+      <label>MRR HEDEFİ</label>
+      <select id="mrr">
+        <option value="$10K">$10K+</option>
+        <option value="$50K" selected>$50K+</option>
+        <option value="$100K">$100K+</option>
+        <option value="$500K">$500K+</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label>KATEGORİ SEÇ</label>
+    <div class="chips">
+      <button class="chip on"  data-cat="AI Tools">🤖 AI Tools</button>
+      <button class="chip on"  data-cat="Health & Fitness">💪 Health</button>
+      <button class="chip on"  data-cat="Personal Finance">💰 Finance</button>
+      <button class="chip"     data-cat="Productivity">⚡ Productivity</button>
+      <button class="chip"     data-cat="Mental Health">🧠 Mental Health</button>
+      <button class="chip"     data-cat="Education & Learning">📚 Education</button>
+      <button class="chip"     data-cat="Dating & Relationships">💬 Dating</button>
+      <button class="chip"     data-cat="Travel & Navigation">✈️ Travel</button>
+      <button class="chip"     data-cat="Pets & Animals">🐾 Pets</button>
+      <button class="chip"     data-cat="Creator & Content Tools">🎨 Creator</button>
+      <button class="chip"     data-cat="Home & Real Estate">🏠 Home</button>
+      <button class="chip"     data-cat="Food & Nutrition">🥗 Food</button>
+      <button class="chip"     data-cat="Sleep & Recovery">😴 Sleep</button>
+      <button class="chip"     data-cat="Business & B2B">💼 B2B</button>
+      <button class="chip"     data-cat="Crypto & Web3">₿ Crypto</button>
+      <button class="chip"     data-cat="Sports & Outdoor">🏃 Sports</button>
+      <button class="chip"     data-cat="Parenting & Kids">👶 Parenting</button>
+      <button class="chip"     data-cat="Career & Job Search">🎯 Career</button>
+      <button class="chip"     data-cat="Photography & Video">📸 Photo/Video</button>
+      <button class="chip"     data-cat="Gaming & Entertainment">🎮 Gaming</button>
+      <button class="chip"     data-cat="Sustainability">🌱 Green Tech</button>
+      <button class="chip"     data-cat="Senior & Accessibility">👴 Seniors</button>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button class="btn btn-sec" onclick="clearAll()">🗑</button>
+  <button class="btn btn-excel" id="btnExcel" onclick="exportExcel()" style="display:none">📊 Excel</button>
+  <button class="btn btn-primary" id="btnScan" onclick="scan()">
+    <span id="bico">🔍</span><span id="btxt">GERÇEK VERİYLE TARA</span>
+  </button>
+</div>
+
+<div class="prog-wrap" id="pw">
+  <div class="prog-track"><div class="prog-fill" id="pf"></div></div>
+  <div class="log-box" id="lb"></div>
+</div>
+
+<div id="rs" style="display:none">
+  <div class="res-header">
+    <div>
+      <div class="res-title">BULUNAN FIRSATLAR</div>
+      <div class="res-count" id="rc"></div>
+    </div>
+  </div>
+  <div class="sort-row">
+    <button class="sbtn on" id="so" onclick="doSort('opportunityScore','so')">⬆ Fırsat</button>
+    <button class="sbtn"    id="sm" onclick="doSort('mrrScore','sm')">💰 MRR</button>
+    <button class="sbtn"    id="sc" onclick="doSort('competitionScore','sc')">🎯 Az Rekabet</button>
+  </div>
+  <div class="ideas-grid" id="ig"></div>
+</div>
+
+<div class="empty show" id="es">
+  <div class="empty-ico">🔍</div>
+  <div class="empty-t">GERÇEK VERİ BEKLENİYOR</div>
+  <div class="empty-s">API keylerini gir · kategori seç · tara</div>
+</div>
+
+</div>
+
+<script>
+let ideas = [], scanning = false;
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => c.classList.toggle('on')));
+
+function lg(msg, type='') {
+  const b = document.getElementById('lb');
+  const d = document.createElement('div');
+  d.className = 'll ' + type;
+  const t = new Date().toLocaleTimeString('tr',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  d.innerHTML = `<span class="t">[${t}]</span><span class="m">${msg}</span>`;
+  b.appendChild(d); b.scrollTop = b.scrollHeight;
+}
+function sp(p) { document.getElementById('pf').style.width = p + '%'; }
+
+// ── API calls through proxy ──
+async function serpSearch(serpKey, query) {
+  const r = await fetch('/api/serp', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ serpKey, query, num: 8 })
+  });
+  if (!r.ok) throw new Error(`SerpAPI hatası: ${r.status}`);
+  const d = await r.json();
+  return (d.organic_results || []).map(x => `• ${x.title}: ${x.snippet||''}`).join('\n');
+}
+
+async function callClaude(claudeKey, prompt) {
+  const r = await fetch('/api/claude', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      userKey: claudeKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 5000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.error?.message || `Claude hatası: ${r.status}`);
+  }
+  const d = await r.json();
+  return d.content.map(b => b.type==='text' ? b.text : '').join('\n');
+}
+
+function parseJSON(raw) {
+  let s = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+  const a = s.indexOf('['), b = s.lastIndexOf(']');
+  if (a===-1||b===-1) return [];
+  try { return JSON.parse(s.slice(a,b+1)); } catch { return []; }
+}
+
+async function scan() {
+  if (scanning) return;
+  const cKey = document.getElementById('claudeKey').value.trim();
+  const sKey = document.getElementById('serpKey').value.trim();
+  if (!cKey) { alert('Claude API key gerekli!'); return; }
+  if (!sKey) { alert('SerpAPI key gerekli!'); return; }
+
+  const cats = [...document.querySelectorAll('.chip.on')].map(c=>c.dataset.cat);
+  const niche = document.getElementById('niche').value.trim();
+  const mrr = document.getElementById('mrr').value;
+  const mkt = document.getElementById('market').value;
+  if (!cats.length && !niche) { alert('Kategori seç veya niche yaz!'); return; }
+
+  scanning = true;
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('bico').textContent = '⏳';
+  document.getElementById('btxt').textContent = 'TARANYOR...';
+  document.getElementById('btnExcel').style.display = 'none';
+  document.getElementById('pw').classList.add('show');
+  document.getElementById('es').classList.remove('show');
+  document.getElementById('rs').style.display = 'none';
+  document.getElementById('lb').innerHTML = '';
+  sp(0);
+
+  const targets = niche ? [niche, ...cats.slice(0,3)] : cats.slice(0,4);
+  let serpData = '';
+  let serpSnippets = {};
+
+  try {
+    // ── SerpAPI searches ──
+    const searches = [
+      ...targets.map(t => ({ key: t, q: `site:reddit.com "${t}" iOS app "wish there was" OR "need an app" OR "looking for an app"` })),
+      ...targets.slice(0,2).map(t => ({ key: t+'_tw', q: `site:twitter.com OR site:x.com "${t}" app iOS complaints unmet needs 2024 2025` })),
+      ...targets.slice(0,2).map(t => ({ key: t+'_as', q: `"${t}" iOS app site:apps.apple.com reviews complaints` })),
+    ];
+
+    let done = 0;
+    for (const s of searches) {
+      try {
+        lg(`Aranıyor: "${s.q.slice(0,60)}..."`, 'info');
+        const result = await serpSearch(sKey, s.q);
+        serpData += `\n=== ${s.key.toUpperCase()} ===\n${result}\n`;
+        serpSnippets[s.key] = result;
+        done++;
+        sp(5 + (done / searches.length) * 55);
+        lg(`✓ ${s.key} verisi alındı (${result.split('\n').length} sonuç)`, 'ok');
+      } catch(e) {
+        lg(`⚠ ${s.key}: ${e.message}`, 'warn');
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    if (!serpData.trim()) throw new Error('SerpAPI\'den hiç veri alınamadı');
+
+    lg('Claude AI analiz başlıyor...', 'info');
+    sp(65);
+
+    const prompt = `You are an expert iOS app market analyst. Below is REAL data scraped from Reddit, Twitter/X, and the App Store using SerpAPI.
+
+Analyze this data carefully and identify 8 iOS app opportunities with HIGH revenue potential and LOW competition.
+
+REAL SCRAPED DATA:
+${serpData}
+
+Target market: ${mkt}
+MRR target: ${mrr}
+Categories: ${targets.join(', ')}
+
+Instructions:
+- Base your analysis on what you actually see in the scraped data above
+- Identify recurring complaints, unmet needs, and gaps
+- Quote specific snippets from the data as evidence
+- Low competition = few quality apps, poor reviews on existing ones
+
+Return ONLY a raw JSON array with 8 objects. No markdown, no explanation.
+
+Each object:
+{
+  "title": "Specific app name",
+  "category": "Category",
+  "description": "2 sentences on what and why",
+  "mrrPotential": "$XXK-$XXXK",
+  "competitionScore": <5-80 lower=less competition>,
+  "mrrScore": <20-95>,
+  "effortScore": <15-85 lower=easier>,
+  "opportunityScore": <20-99>,
+  "primarySource": "reddit|twitter|appstore",
+  "twitterSignal": "What the Twitter/X data shows about demand",
+  "redditSignal": "Specific Reddit pain point from the data — mention subreddit if visible",
+  "appStoreGap": "What App Store data reveals about competition gaps",
+  "realDataEvidence": "Direct quote or specific finding from the scraped data above",
+  "monetization": "Price and model",
+  "targetUser": "Specific persona",
+  "timeToMvp": "e.g. 2-3 months",
+  "competitorWeakness": "Why existing solutions are beatable",
+  "sources": ["twitter","reddit","appstore"]
+}`;
+
+    const raw = await callClaude(cKey, prompt);
+    sp(90);
+    lg('Yanıt alındı, parse ediliyor...', 'ok');
+
+    let parsed = parseJSON(raw);
+    if (!parsed.length) {
+      lg('JSON temizleniyor...', 'info');
+      const fix = await callClaude(cKey, `Extract ALL JSON objects and return as single clean array. ONLY the array:\n\n${raw}`);
+      parsed = parseJSON(fix);
+    }
+
+    if (!parsed.length) throw new Error('Sonuç parse edilemedi, tekrar deneyin.');
+
+    const seen = new Set();
+    ideas = parsed.filter(x => {
+      if (!x.title || seen.has(x.title)) return false;
+      seen.add(x.title); return true;
+    }).sort((a,b) => (b.opportunityScore||0)-(a.opportunityScore||0));
+
+    lg(`✓ ${ideas.length} fırsat bulundu — gerçek web verisiyle!`, 'ok');
+    sp(100);
+    render();
+    document.getElementById('btnExcel').style.display = 'flex';
+    setTimeout(() => document.getElementById('pw').classList.remove('show'), 1800);
+
+  } catch(e) {
+    lg('HATA: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    scanning = false;
+    document.getElementById('btnScan').disabled = false;
+    document.getElementById('bico').textContent = '🔍';
+    document.getElementById('btxt').textContent = 'GERÇEK VERİYLE TARA';
+  }
+}
+
+const SOURCE_META = {
+  twitter:      {label:'Twitter/X',    cls:'src-twitter',      ico:'𝕏',  bg:'rgba(0,212,255,.1)'},
+  reddit:       {label:'Reddit',       cls:'src-reddit',       ico:'📋', bg:'rgba(255,107,43,.1)'},
+  appstore:     {label:'App Store',    cls:'src-appstore',     ico:'📱', bg:'rgba(0,255,136,.1)'},
+  indiehackers: {label:'Indie Hackers',cls:'src-indiehackers', ico:'🚀', bg:'rgba(180,120,255,.1)'},
+  serpapi:      {label:'SerpAPI',      cls:'src-serpapi',      ico:'🔍', bg:'rgba(255,200,0,.1)'},
+};
+
+function sourceTags(sources) {
+  return (sources||[]).map(s => {
+    const m = SOURCE_META[s] || {label:s, cls:'src-serpapi', ico:'•'};
+    return `<span class="source-badge ${m.cls}">${m.ico} ${m.label}</span>`;
+  }).join('');
+}
+
+function doSort(field, btnId) {
+  ['so','sm','sc'].forEach(id=>document.getElementById(id).classList.remove('on'));
+  document.getElementById(btnId).classList.add('on');
+  if (field==='competitionScore') ideas.sort((a,b)=>(a[field]||50)-(b[field]||50));
+  else ideas.sort((a,b)=>(b[field]||0)-(a[field]||0));
+  render(false);
+}
+
+function render(anim=true) {
+  document.getElementById('rs').style.display = 'block';
+  document.getElementById('es').classList.remove('show');
+  document.getElementById('rc').textContent = `${ideas.length} fırsat · SerpAPI gerçek veri · Claude AI analizi`;
+
+  document.getElementById('ig').innerHTML = ideas.map((d,i) => `
+    <div class="card" id="c${i}" style="${anim?`animation-delay:${i*.07}s`:'animation:none'}">
+      <div class="ctop">
+        <div class="rank">${String(i+1).padStart(2,'0')}</div>
+        <div class="cmain">
+          <div class="ccat">${d.category||''}</div>
+          <div class="ctitle">${d.title||''}</div>
+          <div class="cdesc">${d.description||''}</div>
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+            <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">KAYNAK:</span>
+            ${sourceTags(d.sources||['reddit','twitter','appstore'])}
+          </div>
+        </div>
+        <div class="cright">
+          <div class="cmrr">${d.mrrPotential||'—'}</div>
+          <div class="cmrr-lbl">MRR POTANSİYEL</div>
+          ${d.timeToMvp?`<div class="cmvp">⏱ ${d.timeToMvp}</div>`:''}
+        </div>
+      </div>
+
+      <div class="scores">
+        <div class="si s-comp"><div class="slbl">Rekabet ↓</div><div class="sbg"><div class="sb" style="width:${d.competitionScore||50}%"></div></div><div class="sv">${d.competitionScore||'?'}/100</div></div>
+        <div class="si s-mrr"><div class="slbl">Gelir ↑</div><div class="sbg"><div class="sb" style="width:${d.mrrScore||50}%"></div></div><div class="sv">${d.mrrScore||'?'}/100</div></div>
+        <div class="si s-eff"><div class="slbl">Efor ↓</div><div class="sbg"><div class="sb" style="width:${d.effortScore||50}%"></div></div><div class="sv">${d.effortScore||'?'}/100</div></div>
+        <div class="si s-opp"><div class="slbl">Fırsat ↑</div><div class="sbg"><div class="sb" style="width:${d.opportunityScore||50}%"></div></div><div class="sv">${d.opportunityScore||'?'}/100</div></div>
+      </div>
+
+      <div class="insights">
+        ${d.realDataEvidence ? `
+        <div class="real-data">
+          <div class="real-data-label">SerpAPI Gerçek Veri Kanıtı</div>
+          <div class="real-snippet">"${d.realDataEvidence}"</div>
+        </div>` : ''}
+        <div class="irow"><div class="iico" style="background:rgba(0,212,255,.1)">𝕏</div><div class="itxt"><strong>Twitter/X:</strong> ${d.twitterSignal||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,107,43,.1)">📋</div><div class="itxt"><strong>Reddit:</strong> ${d.redditSignal||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(0,255,136,.1)">📱</div><div class="itxt"><strong>App Store Boşluğu:</strong> ${d.appStoreGap||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,255,136,.08)">⚔️</div><div class="itxt"><strong>Rakip Zayıflığı:</strong> ${d.competitorWeakness||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,255,255,.04)">💳</div><div class="itxt"><strong>Monetizasyon:</strong> ${d.monetization||'N/A'}</div></div>
+        <div class="irow"><div class="iico" style="background:rgba(255,255,255,.04)">🎯</div><div class="itxt"><strong>Hedef Kullanıcı:</strong> ${d.targetUser||'N/A'}</div></div>
+      </div>
+
+      <div class="cfoot">
+        <div class="tags">${sourceTags(d.sources||['reddit','twitter','appstore'])}</div>
+        <button class="tbtn" onclick="tog(${i},this)">▼ Detay</button>
+      </div>
+    </div>`).join('');
+}
+
+function tog(i,btn) {
+  const c = document.getElementById('c'+i);
+  c.classList.toggle('open');
+  btn.textContent = c.classList.contains('open') ? '▲ Gizle' : '▼ Detay';
+}
+
+function exportExcel() {
+  if (!ideas.length) return;
+  const wb = XLSX.utils.book_new();
+
+  const sh1 = [
+    ['Sıra','Uygulama','Kategori','MRR Potansiyeli','Fırsat','Rekabet','Gelir','Efor','MVP Süresi','Birincil Kaynak'],
+    ...ideas.map((d,i)=>[i+1,d.title,d.category,d.mrrPotential,d.opportunityScore,d.competitionScore,d.mrrScore,d.effortScore,d.timeToMvp,d.primarySource])
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(sh1);
+  ws1['!cols'] = [4,26,18,16,12,12,12,10,14,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Özet');
+
+  const sh2 = [
+    ['Uygulama','Gerçek Veri Kanıtı','Twitter/X Sinyali','Reddit Pain Point','App Store Boşluğu','Rakip Zayıflığı','Monetizasyon','Hedef Kullanıcı'],
+    ...ideas.map(d=>[d.title,d.realDataEvidence,d.twitterSignal,d.redditSignal,d.appStoreGap,d.competitorWeakness,d.monetization,d.targetUser])
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(sh2);
+  ws2['!cols'] = [24,44,38,38,34,34,28,28].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws2, 'Veri & Sinyaller');
+
+  XLSX.writeFile(wb, `ios-firsatlar-serp-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function clearAll() {
+  ideas = [];
+  document.getElementById('rs').style.display = 'none';
+  document.getElementById('ig').innerHTML = '';
+  document.getElementById('lb').innerHTML = '';
+  document.getElementById('pf').style.width = '0%';
+  document.getElementById('pw').classList.remove('show');
+  document.getElementById('btnExcel').style.display = 'none';
+  document.getElementById('es').classList.add('show');
+}
+</script>
+</body>
+</html>
